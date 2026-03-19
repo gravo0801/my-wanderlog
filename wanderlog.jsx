@@ -61,38 +61,32 @@ const newWaypoint = () => ({id:uid(), name:"", lat:null, lon:null, time:"", icon
 const getWaypoints = d => safeArr(d?.waypoints).length ? d.waypoints : [newWaypoint()];
 const getPlaceNames = d => getWaypoints(d).map(w=>w.name).filter(Boolean);
 
-/* ── Place Search (Upgraded to Photon Komoot API for POI & Multilingual) ── */
+/* ── Place Search (Nominatim with Strict Multilingual Support) ───────────── */
 async function fetchPlaces(query) {
   try {
-    // Photon API는 OSM 데이터를 기반으로 식당, 호텔, 랜드마크 다국어 검색에 훨씬 강력합니다.
-    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=7`);
+    // accept-language를 ko-KR,ko,en 우선으로 주어 한글 검색결과를 최우선으로 가져옵니다.
+    // 영어 지명, 현지어 지명 입력 시에도 정상 작동합니다.
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6&accept-language=ko-KR,ko,en-US,en`;
+    const res = await fetch(url);
     const data = await res.json();
     
-    return data.features.map(f => {
-      const p = f.properties;
-      const name = p.name || p.street || p.city || "알 수 없는 장소";
+    return data.map(item => {
+      const name = item.name || item.display_name.split(",")[0];
+      const sub = item.display_name;
       
-      // 주소 조합 (중복 제거)
-      const subArr = [p.street, p.city, p.state, p.country].filter(Boolean);
-      const sub = [...new Set(subArr)].join(", ");
-      
-      // 장소 타입에 따른 아이콘 자동 매칭
       let icon = "📍";
-      if (p.osm_value === "hotel" || p.osm_value === "guest_house") icon = "🏨";
-      else if (p.osm_value === "restaurant" || p.osm_value === "cafe") icon = "🍽️";
-      else if (p.osm_value === "museum" || p.osm_value === "attraction") icon = "🏛️";
-      else if (p.osm_value === "mall" || p.osm_value === "supermarket") icon = "🛍️";
+      if(item.type === "hotel" || item.type === "guest_house") icon = "🏨";
+      else if(item.type === "restaurant" || item.type === "cafe" || item.type === "fast_food") icon = "🍽️";
+      else if(item.type === "museum" || item.type === "attraction" || item.type === "viewpoint") icon = "🏛️";
       
-      return {
-        name, sub, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], icon
-      };
-    }).filter((item, index, self) => // 중복 결과 제거
+      return { name, sub, lat: item.lat, lon: item.lon, icon };
+    }).filter((item, index, self) => 
       index === self.findIndex((t) => t.name === item.name && t.lat === item.lat)
     ).slice(0, 5);
   } catch (e) { return []; }
 }
 
-/* ── Canvas Map ──────────────────────────────────────────────────────────── */
+/* ── Canvas Map (Upgraded with Actual OSRM Road Routing) ─────────────────── */
 const lon2tile = (lon,z) => Math.floor((lon+180)/360 * (1<<z));
 const lat2tile = (lat,z) => Math.floor((1 - Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180))/Math.PI)/2 * (1<<z));
 const tile2lon = (x,z) => x/(1<<z)*360 - 180;
@@ -101,8 +95,10 @@ const tile2lat = (y,z) => { const n = Math.PI - 2*Math.PI*y/(1<<z); return 180/M
 function MapCanvas({ waypoints }) {
   const canvasRef = useRef();
   const [mapStatus, setMapStatus] = useState("idle");
+  const drewRef = useRef(false); // 중복 그리기 방지
 
   useEffect(() => {
+    drewRef.current = false;
     const canvas = canvasRef.current;
     if (!canvas || !waypoints.length) return;
     const ctx = canvas.getContext("2d");
@@ -134,14 +130,50 @@ function MapCanvas({ waypoints }) {
     const py = lat => (lat-oLat)/(eLat-oLat)*H;
 
     let done=0; const total=nX*nY;
-    const drawPins = () => {
-      const pts = waypoints.map(w=>({x:px(parseFloat(w.lon)),y:py(parseFloat(w.lat)),w}));
-      if (pts.length>1) {
-        ctx.beginPath(); ctx.strokeStyle="#8A6B3E"; ctx.lineWidth=3;
-        ctx.setLineDash([8,8]);
-        ctx.moveTo(pts[0].x,pts[0].y); pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y)); ctx.stroke();
-        ctx.setLineDash([]);
+
+    const drawRouteAndPins = async () => {
+      const pts = waypoints.filter(w=>w.lat&&w.lon).map(w=>({x:px(parseFloat(w.lon)),y:py(parseFloat(w.lat)), lon:w.lon, lat:w.lat}));
+      
+      if (pts.length > 1) {
+        try {
+          // OSRM API를 사용하여 실제 자동차 도로 기반 경로 요청
+          const coords = pts.map(p => `${p.lon},${p.lat}`).join(';');
+          const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+          const data = await res.json();
+
+          ctx.beginPath();
+          ctx.strokeStyle = "#8A6B3E";
+          ctx.lineWidth = 4;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.shadowColor = "rgba(138,107,62,0.4)";
+          ctx.shadowBlur = 8;
+
+          if (data.routes && data.routes[0]) {
+            // 실제 도로 동선 그리기
+            const routeGeom = data.routes[0].geometry.coordinates;
+            routeGeom.forEach((coord, idx) => {
+              const rx = px(coord[0]), ry = py(coord[1]);
+              if (idx === 0) ctx.moveTo(rx, ry);
+              else ctx.lineTo(rx, ry);
+            });
+          } else {
+            // 경로를 찾지 못할 경우 직선 폴백
+            ctx.setLineDash([8,8]);
+            ctx.moveTo(pts[0].x, pts[0].y);
+            pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.shadowBlur = 0;
+        } catch (e) {
+          // 에러 시 직선 폴백
+          ctx.beginPath(); ctx.strokeStyle = "#8A6B3E"; ctx.lineWidth = 3; ctx.setLineDash([8,8]);
+          ctx.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([]);
+        }
       }
+
+      // 핀(숫자 마커) 그리기
       pts.forEach((p,i)=>{
         ctx.beginPath(); ctx.arc(p.x,p.y,10,0,Math.PI*2); ctx.fillStyle="#8A6B3E"; ctx.fill();
         ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke();
@@ -150,8 +182,15 @@ function MapCanvas({ waypoints }) {
       setMapStatus("ok");
     };
 
-    const check=()=>{ done++; if(done>=total) drawPins(); };
-    setTimeout(()=>{ if(done<total) drawPins(); },3000);
+    const check = async () => { 
+      done++; 
+      if(done >= total && !drewRef.current) { drewRef.current = true; await drawRouteAndPins(); }
+    };
+    
+    // 타일 로딩 지연 시 폴백 처리
+    setTimeout(async () => { 
+      if(!drewRef.current) { drewRef.current = true; await drawRouteAndPins(); }
+    }, 3500);
 
     for (let tx=0;tx<nX;tx++) for (let ty=0;ty<nY;ty++) {
       const s=["a","b","c"][(tx+ty)%3];
@@ -168,8 +207,8 @@ function MapCanvas({ waypoints }) {
     <div style={{borderRadius:16,overflow:"hidden",border:"1px solid rgba(0,0,0,.08)",boxShadow:"0 10px 30px rgba(0,0,0,.05)",position:"relative"}}>
       <canvas ref={canvasRef} style={{width:"100%",height:250,display:"block",background:"#F0F4F8"}}/>
       {mapStatus==="loading"&&(
-        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.8)",backdropFilter:"blur(4px)",padding:"10px 20px",borderRadius:20}}>
-          <span style={{fontSize:12,color:"#4A5568",fontWeight:600}}>지도 데이터를 불러오는 중...</span>
+        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.85)",backdropFilter:"blur(6px)",padding:"10px 20px",borderRadius:20,boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+          <span style={{fontSize:12,color:"#4A5568",fontWeight:600}}>지도 경로를 그리는 중...</span>
         </div>
       )}
     </div>
@@ -221,7 +260,7 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
       </div>
 
       {open && results.length > 0 && (
-        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"#FFFFFF",border:"1px solid rgba(0,0,0,.08)",borderRadius:12,zIndex:1000,overflow:"hidden",boxShadow:"0 18px 40px rgba(0,0,0,.15)"}}>
+        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"#FFFFFF",border:"1px solid rgba(0,0,0,.08)",borderRadius:12,zIndex:1000,overflow:"hidden",boxShadow:"0 18px 40px rgba(0,0,0,.15)",maxHeight:250,overflowY:"auto"}}>
           {results.map((item,i) => (
             <div key={i} style={{padding:"12px 14px",cursor:"pointer",borderBottom:"1px solid #EDF2F7",display:"flex",gap:10,alignItems:"center"}}
               onMouseDown={()=>handlePick(item)}>
@@ -269,7 +308,7 @@ function WaypointsEditor({ waypoints, onChange }) {
 
       <div style={{display:"flex",gap:10,marginTop:12,flexWrap:"wrap"}}>
         <button onClick={addWp} style={C.btnAdd}>+ 장소 추가</button>
-        {valid.length>=1 && <button onClick={()=>setShowMap(p=>!p)} style={C.btnMap}>{showMap?"지도 닫기":"전체 지도 보기"}</button>}
+        {valid.length>=1 && <button onClick={()=>setShowMap(p=>!p)} style={C.btnMap}>{showMap?"지도 닫기":"실제 동선 지도 보기"}</button>}
       </div>
       {showMap && valid.length>=1 && <div style={{marginTop:16}}><MapCanvas waypoints={valid}/></div>}
     </div>
@@ -322,6 +361,10 @@ export default function WanderLog() {
         
         .app-wrapper { display: flex; min-height: 100vh; background: #F9F9F8; }
         .left-panel, .right-panel { width: 100%; height: 100vh; overflow-y: auto; overflow-x: hidden; background: #F9F9F8; }
+
+        /* Custom Toast Animation */
+        @keyframes slideDown { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        .toast-msg { animation: slideDown 0.3s ease-out forwards; }
 
         @media (max-width: 1023px) {
           .app-wrapper { max-width: 600px; margin: 0 auto; box-shadow: 0 0 30px rgba(0,0,0,0.05); background:#FFF; }
@@ -444,7 +487,6 @@ function TripScreen({ trip, onBack, onSelectDay, onUpdate, onDelete }) {
 function DayRow({ day, index, onClick }) {
   const wps = getWaypoints(day).filter(w=>w.name);
   const exps = safeArr(day.expenses);
-  const dailyTotal = exps.reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
   return (
     <div className="tbtn" style={{display:"flex",gap:16,padding:"20px",marginBottom:16,background:"#FFF",borderRadius:20,border:"1px solid #EDF2F7",boxShadow:"0 8px 20px rgba(0,0,0,0.03)"}} onClick={onClick}>
@@ -484,8 +526,8 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
   const [photos, setPhotos] = useState(() => safeArr(day.photos));
   const [exps,   setExps]   = useState(() => safeArr(day.expenses));
   const [saved,  setSaved]  = useState(false);
+  const [toast,  setToast]  = useState(""); // 부드러운 알림창을 위한 상태
 
-  // 새로운 지출 내역 초기 폼
   const [newExp, setNewExp] = useState({amount:"", category:"food", method:"card", currency:trip.currency||"KRW", memo:""});
 
   const save = () => {
@@ -497,16 +539,30 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
     const r=new FileReader(); r.onload=ev=>setPhotos(p=>[...p,ev.target.result]); r.readAsDataURL(f);
   });
 
+  // 네이버 마이박스 클릭 핸들러 (에러창 대신 토스트 알림)
+  const handleNaverMyBox = () => {
+    setToast("현재 웹 환경에서는 네이버 연동이 제한되어 임시로 기기 앨범을 엽니다.");
+    setTimeout(() => setToast(""), 3500);
+  };
+
   const handleAddExp = () => {
     if (!newExp.amount) return;
     setExps([...exps, { id: uid(), ...newExp }]);
-    setNewExp({ ...newExp, amount:"", memo:"" }); // 기록 후 금액/메모만 초기화
+    setNewExp({ ...newExp, amount:"", memo:"" });
   };
 
   const deleteExp = (id) => setExps(exps.filter(e => e.id !== id));
 
   return (
     <div style={{height:"100%", overflowY:"auto", paddingBottom:100, position:"relative"}}>
+      
+      {/* Toast 알림 UI */}
+      {toast && (
+        <div className="toast-msg" style={{position:"fixed", top:20, left:"50%", zIndex:999, background:"#2D3748", color:"#FFF", padding:"12px 20px", borderRadius:12, fontSize:14, fontWeight:600, boxShadow:"0 8px 20px rgba(0,0,0,0.2)", width:"90%", maxWidth:400, textAlign:"center"}}>
+          {toast}
+        </div>
+      )}
+
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 24px",background:"rgba(255,255,255,0.9)",backdropFilter:"blur(10px)",position:"sticky",top:0,zIndex:30,borderBottom:"1px solid #EDF2F7"}}>
         <button style={S.iconBtn} onClick={onBack}>←</button>
         <div style={{fontSize:16,fontWeight:700,color:"#2D3748"}}>{fmtDate(day.date)}</div>
@@ -514,14 +570,11 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
       </div>
 
       <div style={{padding:"24px"}}>
-        
-        {/* 장소 검색 (Photon 적용) */}
         <div style={S.secBox}>
           <div style={S.secTitle}>📍 일정 & 동선 기록</div>
           <WaypointsEditor waypoints={wps} onChange={setWps}/>
         </div>
 
-        {/* 💰 지출 내역 (새로운 기능) */}
         <div style={S.secBox}>
           <div style={S.secTitle}>💰 일일 지출 내역</div>
           
@@ -562,7 +615,6 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
             </div>
           </div>
 
-          {/* 추가된 지출 목록 */}
           {exps.length > 0 ? (
             <div style={{display:"flex", flexDirection:"column", gap:10}}>
               {exps.map(e => {
@@ -588,13 +640,11 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
           )}
         </div>
 
-        {/* 일기 섹션 */}
         <div style={S.secBox}>
           <div style={S.secTitle}>✍️ 나만의 여행 노트</div>
           <textarea value={diary} onChange={e=>setDiary(e.target.value)} placeholder="오늘 어떤 멋진 일들이 있었나요?" style={{minHeight:150}}/>
         </div>
 
-        {/* 사진 섹션 */}
         <div style={S.secBox}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={S.secTitle} style={{margin:0, fontWeight:700, fontSize:15, color:"#2D3748"}}>📷 사진 갤러리</div>
@@ -604,9 +654,14 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
             </label>
           </div>
           
-          <div style={{background:"#03C75A", color:"#FFF", padding:"12px 16px", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:16, cursor:"pointer", boxShadow:"0 4px 12px rgba(3,199,90,0.3)"}} onClick={() => alert("현재 환경에서는 지원되지 않습니다. 추후 백엔드 연동이 필요합니다.")}>
+          {/* 네이버 마이박스: 에러창(alert) 대신 기기 갤러리로 연동되면서 Toast 알림 띄움 */}
+          <label 
+            style={{background:"#03C75A", color:"#FFF", padding:"12px 16px", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:16, cursor:"pointer", boxShadow:"0 4px 12px rgba(3,199,90,0.3)"}} 
+            onClick={handleNaverMyBox}
+          >
             <span style={{fontWeight:800}}>N</span> <span>MYBOX 연동하여 가져오기</span>
-          </div>
+            <input type="file" accept="image/*" multiple hidden onChange={addPhotos}/>
+          </label>
 
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
             {photos.map((p,i)=>(

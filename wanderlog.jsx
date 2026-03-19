@@ -86,12 +86,7 @@ async function callClaude(prompt, maxTokens=700) {
 }
 
 /* ── Exchange Rates ──────────────────────────────────────────────────────── */
-// All values = "how many KRW you receive for spending 1 unit of that currency"
-// e.g. JPY:9.2 means  1 JPY → 9.2 KRW  (2000 JPY → 18,400 KRW)
-// e.g. USD:1380 means 1 USD → 1,380 KRW
 const FALLBACK_RATES = {KRW:1,USD:1380,EUR:1510,JPY:9.2,GBP:1750,CNY:192,THB:39,VND:0.054,SGD:1020,AUD:900,TWD:43,HKD:177};
-
-// Known reasonable ranges for sanity-checking AI response (min, max KRW per 1 unit)
 const RATE_RANGES = {USD:[1100,1700],EUR:[1200,1900],JPY:[6,13],GBP:[1400,2200],CNY:[140,230],THB:[25,55],VND:[0.03,0.08],SGD:[850,1200],AUD:[700,1100],TWD:[35,55],HKD:[140,210]};
 
 function sanitizeRates(raw) {
@@ -101,12 +96,9 @@ function sanitizeRates(raw) {
     const val = Number(raw?.[cur]);
     if (!isFinite(val) || val <= 0) { out[cur] = fallback; continue; }
     const [lo, hi] = RATE_RANGES[cur] || [0, Infinity];
-    // If value is within expected range → use it
     if (val >= lo && val <= hi) { out[cur] = val; continue; }
-    // If value looks like the inverse (1/val is in range) → flip it
     const inv = 1 / val;
     if (inv >= lo && inv <= hi) { out[cur] = inv; continue; }
-    // Otherwise fall back to hardcoded default
     out[cur] = fallback;
   }
   return out;
@@ -120,17 +112,8 @@ async function getExchangeRates() {
   const data = await callClaude(
     `I need currency → KRW conversion rates.
 RULE: each value = how many Korean Won (KRW) you get for spending ONE unit of that currency.
-
-Examples of CORRECT values:
-  1 USD costs about 1,380 KRW  → "USD": 1380
-  1 EUR costs about 1,510 KRW  → "EUR": 1510
-  1 JPY costs about 9.2 KRW    → "JPY": 9.2   (NOT 110, NOT 0.109)
-  1 THB costs about 39 KRW     → "THB": 39
-  1 VND costs about 0.054 KRW  → "VND": 0.054
-
 Return a JSON object with today's approximate rates for these keys:
 KRW USD EUR JPY GBP CNY THB VND SGD AUD TWD HKD
-
 KRW must be 1. Return ONLY the JSON object.`, 350
   );
 
@@ -143,9 +126,8 @@ KRW must be 1. Return ONLY the JSON object.`, 350
 async function fetchPlaces(query) {
   const data = await callClaude(
     `Travel autocomplete. User typed: "${query}"
-Return a JSON array of exactly 5 real places. Match the input language (한국어→한국어, English→English).
+Return a JSON array of exactly 5 real places. Match the input language.
 Format: [{"name":"place name","sub":"city, country","lat":0.0,"lon":0.0,"icon":"emoji"}]
-Use one icon from: 🏛️ 🗼 🏯 🏖️ ⛪ 🕌 🗻 🌉 🏙️ 🚉 ✈️ 🛍️ 🍽️ 🏨 🎭 🌿 🏔️ 📍 🎡 🌊 🏝️
 Use accurate real-world coordinates. Return ONLY the JSON array.`, 600
   );
   if (Array.isArray(data)) return data;
@@ -265,7 +247,6 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
   const [pinned, setPinned] = useState(false);
   const debRef = useRef(), wrapRef = useRef();
 
-  // Sync from parent only when value differs significantly
   useEffect(() => { if (!pinned) setQ(value || ""); }, [value]);
 
   const doSearch = useCallback(v => {
@@ -354,7 +335,6 @@ function WaypointsEditor({ waypoints, onChange }) {
     <div>
       {waypoints.map((wp, i) => (
         <div key={wp.id} style={{marginBottom:6}}>
-          {/* Place row */}
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
             <div style={{width:24,height:24,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:wp.lat?15:10,fontWeight:700,color:"#D4A853",background:wp.lat?"rgba(212,168,83,.2)":"rgba(212,168,83,.09)",border:`1px solid ${wp.lat?"rgba(212,168,83,.5)":"rgba(212,168,83,.25)"}`,transition:"all .2s"}}>
               {wp.lat ? (wp.icon||"📍") : i+1}
@@ -373,7 +353,6 @@ function WaypointsEditor({ waypoints, onChange }) {
             )}
           </div>
 
-          {/* Connector */}
           {i < waypoints.length-1 && (
             <div style={{display:"flex",gap:9,padding:"4px 0 4px 10px"}}>
               <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,paddingTop:3}}>
@@ -442,7 +421,6 @@ function BudgetTab({ trip }) {
 
   return (
     <div style={{paddingBottom:40}}>
-      {/* KRW total */}
       <div style={{background:"rgba(212,168,83,.06)",border:"1px solid rgba(212,168,83,.18)",borderRadius:18,padding:"20px 18px 16px",marginBottom:16,textAlign:"center"}}>
         <div style={{fontSize:10,color:"#D4A85370",letterSpacing:2,marginBottom:4}}>총 여행 경비 (원화 환산)</div>
         {rates ? (
@@ -454,7 +432,6 @@ function BudgetTab({ trip }) {
           <div style={{fontSize:13,color:"#F5ECD748",padding:"8px 0"}}>{loading?"환율 조회중...":"—"}</div>
         )}
 
-        {/* Per-currency breakdown */}
         {Object.keys(byCur).length>0 && (
           <div style={{display:"flex",gap:7,flexWrap:"wrap",justifyContent:"center",marginTop:11}}>
             {Object.entries(byCur).map(([cur,amt])=>(
@@ -474,37 +451,26 @@ function BudgetTab({ trip }) {
           </button>
           {fetchTime && <span style={{fontSize:10,color:"#F5ECD738"}}>기준: {fetchTime}</span>}
         </div>
-        <div style={{fontSize:9.5,color:"#F5ECD728",marginTop:5}}>AI 추정 환율 · 참고용</div>
       </div>
 
-      {/* Rate quick view */}
       {rates && (
         <div style={{padding:"10px 13px",background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.055)",borderRadius:12,marginBottom:16}}>
           <div style={{fontSize:9.5,color:"#D4A85355",letterSpacing:1.5,marginBottom:7}}>현재 환율 (1단위 → 원화)</div>
           <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
             {[
-              {c:"USD", label:"$1"},
-              {c:"EUR", label:"€1"},
-              {c:"JPY", label:"¥100", mult:100},
-              {c:"GBP", label:"£1"},
-              {c:"THB", label:"฿1"},
-              {c:"VND", label:"₫100", mult:100},
-              {c:"SGD", label:"S$1"},
-              {c:"AUD", label:"A$1"},
-              {c:"TWD", label:"NT$1"},
-              {c:"HKD", label:"HK$1"},
-              {c:"CNY", label:"¥1"},
+              {c:"USD", label:"$1"}, {c:"EUR", label:"€1"}, {c:"JPY", label:"¥100", mult:100},
+              {c:"GBP", label:"£1"}, {c:"THB", label:"฿1"}, {c:"VND", label:"₫100", mult:100},
+              {c:"SGD", label:"S$1"}, {c:"AUD", label:"A$1"}, {c:"TWD", label:"NT$1"},
+              {c:"HKD", label:"HK$1"}, {c:"CNY", label:"¥1"},
             ].map(({c, label, mult=1})=>(
               <span key={c} style={{fontSize:10.5,color:"#F5ECD778",background:"rgba(255,255,255,.03)",padding:"2px 7px",borderRadius:6}}>
                 {label}=<span style={{color:"#D4A853",fontWeight:600}}>{Math.round((rates[c]||0)*mult).toLocaleString()}</span>₩
               </span>
             ))}
           </div>
-          <div style={{fontSize:9,color:"#F5ECD730",marginTop:6}}>예) 2,000엔 = {Math.round((rates["JPY"]||9.2)*2000).toLocaleString()}원</div>
         </div>
       )}
 
-      {/* Category */}
       {byCat.length>0 && (
         <>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"#F5ECD7",marginBottom:11}}>카테고리별</div>
@@ -520,7 +486,6 @@ function BudgetTab({ trip }) {
         </>
       )}
 
-      {/* Detail list */}
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"#F5ECD7",marginBottom:11}}>상세 내역</div>
       {allExp.length===0
         ? <div style={{color:"#F5ECD730",fontSize:13,textAlign:"center",padding:"18px 0"}}>지출 내역이 없습니다</div>
@@ -553,23 +518,21 @@ function BudgetTab({ trip }) {
 export default function WanderLog() {
   const [trips,   setTrips]  = useState([]);
   const [loaded,  setLoaded] = useState(false);
-  const [screen,  setScreen] = useState("home");
+  const [screen,  setScreen] = useState("home"); // "home" | "trip" | "day"
   const [selTrip, setST]     = useState(null);
   const [selDay,  setSD]     = useState(null);
   const [modal,   setModal]  = useState(false);
 
-  // Load from storage once on mount
   useEffect(() => {
     storageLoad().then(data => { setTrips(safeArr(data)); setLoaded(true); });
   }, []);
 
-  // Save on change (only after initial load)
   useEffect(() => {
     if (loaded) storageSave(trips);
   }, [trips, loaded]);
 
   const updateTrip = t => { setTrips(p=>p.map(x=>x.id===t.id?t:x)); setST(t); };
-  const deleteTrip = id => { setTrips(p=>p.filter(x=>x.id!==id)); setScreen("home"); };
+  const deleteTrip = id => { setTrips(p=>p.filter(x=>x.id!==id)); setScreen("home"); setST(null); };
 
   const stats = {
     countries: new Set(trips.map(t=>t.country).filter(Boolean)).size,
@@ -578,7 +541,7 @@ export default function WanderLog() {
   };
 
   if (!loaded) return (
-    <div style={{...S.app, display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh"}}>
+    <div style={{background:"#080F1C", display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh"}}>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
         <div style={{width:20,height:20,border:"2px solid rgba(212,168,83,.2)",borderTopColor:"#D4A853",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
         <span style={{fontSize:12,color:"#D4A85360"}}>불러오는 중...</span>
@@ -587,38 +550,143 @@ export default function WanderLog() {
   );
 
   return (
-    <div style={S.app}>
+    <div className="app-wrapper">
+      {/* 반응형 뷰를 위한 전역 CSS */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
-        *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-        ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#D4A85335;border-radius:2px}
-        .tc{transition:all .22s cubic-bezier(.4,0,.2,1)}.tc:hover{transform:translateY(-2px);box-shadow:0 18px 48px rgba(0,0,0,.55)!important}
-        .tbtn{transition:all .18s;cursor:pointer;touch-action:manipulation}.tbtn:active{transform:scale(.96);opacity:.82}
-        .hov:hover,.hov:active{background:rgba(212,168,83,.07)!important}.hov{transition:background .12s}
-        input,textarea,select{background:rgba(255,255,255,.055)!important;border:1px solid rgba(212,168,83,.2)!important;color:#F5ECD7!important;border-radius:10px;padding:11px 13px;font-family:'DM Sans',sans-serif;font-size:16px;outline:none;width:100%;-webkit-appearance:none}
-        input:focus,textarea:focus,select:focus{border-color:rgba(212,168,83,.5)!important;background:rgba(255,255,255,.08)!important}
-        input::placeholder,textarea::placeholder{color:rgba(245,236,215,.25)!important}
-        select option{background:#111D2E;color:#F5ECD7}
-        textarea{resize:vertical;min-height:108px;line-height:1.75;font-size:15px}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}.fu{animation:fadeUp .3s ease forwards}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{filter:invert(.7) sepia(1) saturate(2) hue-rotate(5deg);cursor:pointer}
+        
+        * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+        body { background: #040811; font-family:'DM Sans', 'Pretendard', 'Apple SD Gothic Neo', sans-serif; color: #F5ECD7; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(212,168,83,0.3); border-radius: 4px; }
+        
+        /* 공통 유틸리티 클래스 */
+        .tc { transition:all .22s cubic-bezier(.4,0,.2,1); }
+        .tc:hover { transform:translateY(-2px); box-shadow:0 18px 48px rgba(0,0,0,.55)!important; }
+        .tbtn { transition:all .18s; cursor:pointer; touch-action:manipulation; }
+        .tbtn:active { transform:scale(.96); opacity:.82; }
+        .hov:hover, .hov:active { background:rgba(212,168,83,.07)!important; }
+        .hov { transition:background .12s; }
+        
+        input, textarea, select { background:rgba(255,255,255,.055)!important; border:1px solid rgba(212,168,83,.2)!important; color:#F5ECD7!important; border-radius:10px; padding:11px 13px; font-family:inherit; font-size:16px; outline:none; width:100%; -webkit-appearance:none; }
+        input:focus, textarea:focus, select:focus { border-color:rgba(212,168,83,.5)!important; background:rgba(255,255,255,.08)!important; }
+        input::placeholder, textarea::placeholder { color:rgba(245,236,215,.25)!important; }
+        select option { background:#111D2E; color:#F5ECD7; }
+        textarea { resize:vertical; min-height:108px; line-height:1.75; font-size:15px; }
+        
+        @keyframes fadeUp { from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:translateY(0)} }
+        .fu { animation:fadeUp .3s ease forwards; }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        
+        input[type=date]::-webkit-calendar-picker-indicator, input[type=time]::-webkit-calendar-picker-indicator { filter:invert(.7) sepia(1) saturate(2) hue-rotate(5deg); cursor:pointer; }
+
+        /* 화면 컴포넌트 내부 기본 영역 */
+        .screen-container { width: 100%; height: 100%; position: relative; }
+
+        /* -------------------------------------------------------------
+           반응형 레이아웃 (Split View / Mobile Stack)
+           ------------------------------------------------------------- */
+        .app-wrapper {
+          display: flex;
+          min-height: 100vh;
+          background: #040811;
+        }
+
+        .left-panel, .right-panel {
+          width: 100%;
+          height: 100vh;
+          overflow-y: auto;
+          overflow-x: hidden;
+          background: #080F1C;
+        }
+
+        .desktop-empty { display: none; }
+        .mobile-only { display: block; }
+
+        /* 모바일 환경 (< 1024px) */
+        @media (max-width: 1023px) {
+          .app-wrapper {
+             max-width: 680px; 
+             margin: 0 auto;
+             box-shadow: 0 0 50px rgba(0,0,0,0.5); /* 웹 브라우저 중앙에 띄울 때의 효과 */
+          }
+          .hidden-mobile { display: none !important; }
+          .active-mobile { display: block !important; }
+        }
+
+        /* 데스크탑 환경 (>= 1024px) 스플릿 뷰 적용 */
+        @media (min-width: 1024px) {
+          .app-wrapper {
+            padding: 24px;
+            gap: 24px;
+            height: 100vh;
+            overflow: hidden;
+            box-sizing: border-box;
+            max-width: 1600px;
+            margin: 0 auto;
+          }
+          .left-panel {
+            width: 420px;
+            flex-shrink: 0;
+            border-radius: 24px;
+            border: 1px solid rgba(212,168,83,.15);
+            box-shadow: 0 10px 40px rgba(0,0,0,.4);
+          }
+          .right-panel {
+            flex: 1;
+            border-radius: 24px;
+            border: 1px solid rgba(212,168,83,.15);
+            box-shadow: 0 10px 40px rgba(0,0,0,.4);
+            position: relative;
+          }
+          .desktop-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(245,236,215,.3);
+            font-size: 20px;
+            font-family: 'Cormorant Garamond', serif;
+            gap: 16px;
+          }
+          /* 데스크탑에서는 오른쪽 화면의 뒤로가기 버튼(목록으로 가기)을 숨김 */
+          .mobile-back-btn { display: none !important; }
+        }
       `}</style>
 
-      {screen==="home" && <HomeScreen trips={trips} stats={stats} onSelect={t=>{setST(t);setScreen("trip");}} onNew={()=>setModal(true)}/>}
-      {screen==="trip" && selTrip && (
-        <TripScreen trip={selTrip} onBack={()=>setScreen("home")}
-          onSelectDay={d=>{setSD(d);setScreen("day");}}
-          onUpdate={updateTrip} onDelete={deleteTrip}/>
-      )}
-      {screen==="day" && selDay && selTrip && (
-        <DayScreen day={selDay} trip={selTrip} onBack={()=>setScreen("trip")}
-          onUpdate={u => {
-            const t = {...selTrip, days: selTrip.days.map(d=>d.date===u.date?u:d)};
-            updateTrip(t); setSD(u);
-          }}/>
-      )}
-      {modal && <NewTripModal onClose={()=>setModal(false)} onCreate={t=>{setTrips(p=>[t,...p]);setModal(false);}}/>}
+      {/* 왼쪽 패널: 홈 화면 (모바일에서는 screen에 따라 숨김처리) */}
+      <div className={`left-panel ${screen === 'home' ? 'active-mobile' : 'hidden-mobile'}`}>
+        <HomeScreen trips={trips} stats={stats} 
+          onSelect={t=>{setST(t); setScreen("trip");}} 
+          onNew={()=>setModal(true)} />
+      </div>
+
+      {/* 오른쪽 패널: 상세 화면 (모바일에서는 screen에 따라 숨김처리) */}
+      <div className={`right-panel ${screen !== 'home' ? 'active-mobile' : 'hidden-mobile'}`}>
+        {screen === "trip" && selTrip && (
+          <TripScreen trip={selTrip} onBack={()=>setScreen("home")}
+            onSelectDay={d=>{setSD(d); setScreen("day");}}
+            onUpdate={updateTrip} onDelete={deleteTrip} />
+        )}
+        {screen === "day" && selDay && selTrip && (
+          <DayScreen day={selDay} trip={selTrip} 
+            onBack={() => setScreen("trip")}
+            onUpdate={u => {
+              const t = {...selTrip, days: selTrip.days.map(d=>d.date===u.date?u:d)};
+              updateTrip(t); setSD(u);
+            }} />
+        )}
+        {/* 데스크탑 전용: 선택된 여행이 없을 때 보여주는 빈 화면 */}
+        {screen === "home" && (
+          <div className="desktop-empty fu">
+            <span style={{fontSize:48, opacity:0.4}}>🧳</span>
+            <span>왼쪽 목록에서 여행을 선택하거나 새로 만들어보세요</span>
+          </div>
+        )}
+      </div>
+
+      {modal && <NewTripModal onClose={()=>setModal(false)} onCreate={t=>{setTrips(p=>[t,...p]); setModal(false); setST(t); setScreen("trip");}} />}
     </div>
   );
 }
@@ -630,7 +698,7 @@ function HomeScreen({ trips, stats, onSelect, onNew }) {
   const filtered  = filter==="all" ? trips : trips.filter(t=>t.country===filter);
 
   return (
-    <div style={S.screen} className="fu">
+    <div className="screen-container fu">
       <div style={{position:"relative",padding:"34px 20px 0",overflow:"hidden"}}>
         <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 110% 75% at 50% -15%,rgba(212,168,83,.11),transparent 70%)",pointerEvents:"none"}}/>
         <div style={{display:"flex",alignItems:"center",gap:13,marginBottom:22}}>
@@ -697,7 +765,7 @@ function TripCard({ trip, onClick }) {
         <div style={{position:"absolute",top:11,right:12,fontSize:28}}>{trip.flag||"🌏"}</div>
         {photos.length>0 && <div style={S.photoBadge}>📷 {photos.length}</div>}
         <div style={{position:"absolute",bottom:11,left:13,right:13}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:700,color:"#fff",textShadow:"0 2px 10px rgba(0,0,0,.8)"}}>{trip.title}</div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:700,color:"#fff",textShadow:"0 2px 10px rgba(0,0,0,.8)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"}}>{trip.title}</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,.58)",marginTop:2}}>{fmtShort(trip.startDate)} — {fmtShort(trip.endDate)}</div>
         </div>
       </div>
@@ -709,8 +777,8 @@ function TripCard({ trip, onClick }) {
         </div>
         {places.length>0 && (
           <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-            {places.slice(0,4).map(c=><span key={c} style={S.chip}>{c}</span>)}
-            {places.length>4&&<span style={S.chip}>+{places.length-4}</span>}
+            {places.slice(0,3).map(c=><span key={c} style={S.chip}>{c}</span>)}
+            {places.length>3&&<span style={S.chip}>+{places.length-3}</span>}
           </div>
         )}
       </div>
@@ -725,13 +793,13 @@ function TripScreen({ trip, onBack, onSelectDay, onUpdate, onDelete }) {
   const allWps = safeArr(trip.days).flatMap(d=>getWaypoints(d).filter(w=>w.lat&&w.lon));
 
   return (
-    <div style={S.screen} className="fu">
+    <div className="screen-container fu">
       <div style={{height:232,position:"relative",background:trip.coverImage?`url(${trip.coverImage}) center/cover`:trip.gradient}}>
         <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(8,15,28,1),rgba(8,15,28,.22) 55%,transparent)"}}/>
         <div style={{position:"absolute",top:13,left:13,right:13,display:"flex",justifyContent:"space-between",zIndex:10}}>
-          <button style={S.ghost} className="tbtn" onClick={onBack}>← 목록</button>
-          <div style={{display:"flex",gap:7}}>
-            <button style={S.ghost} className="tbtn" onClick={()=>fileRef.current?.click()}>📷</button>
+          <button style={S.ghost} className="tbtn mobile-back-btn" onClick={onBack}>← 목록</button>
+          <div style={{marginLeft:"auto", display:"flex",gap:7}}>
+            <button style={S.ghost} className="tbtn" onClick={()=>fileRef.current?.click()}>📷 커버수정</button>
             <button style={{...S.ghost,color:"#ff9090"}} className="tbtn" onClick={()=>{if(confirm("삭제할까요?"))onDelete(trip.id)}}>🗑️</button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
@@ -819,7 +887,7 @@ function PhotosTab({ photos }) {
   );
   return (
     <div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:14}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(100px, 1fr))",gap:6,marginBottom:14}}>
         {photos.map((p,i)=><div key={i} style={{aspectRatio:"1",borderRadius:9,backgroundSize:"cover",backgroundPosition:"center",border:"1px solid rgba(212,168,83,.13)",cursor:"pointer",backgroundImage:`url(${p})`}} onClick={()=>setPrev(p)}/>)}
       </div>
       {prev&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.88)",backdropFilter:"blur(12px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,cursor:"pointer"}} onClick={()=>setPrev(null)}>
@@ -865,7 +933,7 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
   const dayExp = exps.reduce((a,e)=>a+(+e.amount||0),0);
 
   return (
-    <div style={S.screen} className="fu">
+    <div className="screen-container fu" style={{position: 'relative'}}>
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",gap:11,padding:"13px 15px 11px",borderBottom:"1px solid rgba(212,168,83,.1)",position:"sticky",top:0,zIndex:20,background:"#080F1C"}}>
         <button style={S.backRound} className="tbtn" onClick={onBack}>←</button>
@@ -879,7 +947,6 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
       </div>
 
       <div style={{...S.body,paddingBottom:88}}>
-
         {/* Waypoints */}
         <div style={S.sec}>
           <div style={S.secLbl}>📍 오늘의 동선</div>
@@ -973,7 +1040,7 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
       </div>
 
       {/* Floating save */}
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:680,padding:"9px 18px 22px",background:"linear-gradient(to top,#080F1C 62%,transparent)",zIndex:30,pointerEvents:"none"}}>
+      <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"9px 18px 22px",background:"linear-gradient(to top,#080F1C 62%,transparent)",zIndex:30,pointerEvents:"none"}}>
         <button style={{...S.gold,width:"100%",padding:"14px",fontSize:15,borderRadius:13,pointerEvents:"all",...(saved?{background:"#4CAF7E",color:"#fff"}:{})}} className="tbtn" onClick={save}>
           {saved?"✓ 저장됨":"저장하기"}
         </button>
@@ -1004,8 +1071,8 @@ function NewTripModal({ onClose, onCreate }) {
   };
 
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",backdropFilter:"blur(10px)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
-      <div style={{background:"#0E1B2E",border:"1px solid rgba(212,168,83,.16)",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:680,maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 -18px 56px rgba(0,0,0,.55)"}} className="fu">
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>
+      <div style={{background:"#0E1B2E",border:"1px solid rgba(212,168,83,.16)",borderRadius:"20px",width:"100%",maxWidth:500,maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(0,0,0,.6)"}} className="fu">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"17px 19px 13px",borderBottom:"1px solid rgba(212,168,83,.1)"}}>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:21,fontWeight:700,color:"#F5ECD7"}}>새 여행 만들기</div>
           <button style={{background:"rgba(255,255,255,.055)",border:"none",color:"#F5ECD768",width:28,height:28,borderRadius:6,cursor:"pointer",fontSize:12}} className="tbtn" onClick={onClose}>✕</button>
@@ -1063,10 +1130,8 @@ const C = {
   delBtn:  {background:"none",border:"none",color:"#F5ECD728",cursor:"pointer",fontSize:12.5,padding:"4px 5px"},
 };
 
-/* ── Global styles ───────────────────────────────────────────────────────── */
+/* ── Global styles (인라인 유지) ─────────────────────────────────────────── */
 const S = {
-  app:      {fontFamily:"'DM Sans',sans-serif",background:"#080F1C",minHeight:"100vh",color:"#F5ECD7",overflowX:"hidden"},
-  screen:   {maxWidth:680,margin:"0 auto",minHeight:"100vh"},
   body:     {padding:"0 18px 22px"},
   row:      {display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14},
   secTitle: {fontFamily:"'Cormorant Garamond',serif",fontSize:21,fontWeight:600,color:"#F5ECD7"},

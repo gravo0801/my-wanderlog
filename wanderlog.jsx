@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-/* ── Storage (window.storage for artifact env or LocalStorage for Vercel) ── */
+/* ── Storage ─────────────────────────────────────────────────────────────── */
 const STORAGE_KEY = "wl_trips";
 async function storageSave(trips) {
   try {
@@ -31,23 +31,19 @@ const safeStr   = v => (typeof v === "string" ? v : "");
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const CURRENCIES = ["KRW","USD","EUR","JPY","GBP","CNY","THB","VND","SGD","AUD","TWD","HKD"];
 const EXP_CATS = [
-  {id:"food",    label:"식비",   icon:"🍜", color:"#FF7F7F"},
-  {id:"transport",label:"교통",  icon:"🚌", color:"#7ECECA"},
-  {id:"lodging", label:"숙박",   icon:"🏨", color:"#7AB8D4"},
-  {id:"sightseeing",label:"관광",icon:"🎭", color:"#A8D8A8"},
-  {id:"shopping",label:"쇼핑",   icon:"🛍️", color:"#F7DC6F"},
-  {id:"other",   label:"기타",   icon:"💳", color:"#C9A0DC"},
+  {id:"food",       label:"식비",   icon:"🍜"},
+  {id:"transport",  label:"교통",   icon:"🚌"},
+  {id:"lodging",    label:"숙박",   icon:"🏨"},
+  {id:"sightseeing",label:"관광",   icon:"🎭"},
+  {id:"shopping",   label:"쇼핑",   icon:"🛍️"},
+  {id:"other",      label:"기타",   icon:"💳"},
 ];
-const TRANSPORT = [
-  {id:"subway",   label:"전철",    icon:"🚃"},
-  {id:"bus",      label:"버스",    icon:"🚌"},
-  {id:"transit",  label:"대중교통",icon:"🚇"},
-  {id:"taxi",     label:"택시",    icon:"🚕"},
-  {id:"walking",  label:"도보",    icon:"🚶"},
-  {id:"driving",  label:"자동차",  icon:"🚗"},
-  {id:"flight",   label:"항공",    icon:"✈️"},
-  {id:"train",    label:"기차",    icon:"🚄"},
+const PAYMENT_METHODS = [
+  {id:"card",   label:"💳 신용카드"},
+  {id:"cash",   label:"💵 현금"},
+  {id:"travel", label:"🪪 트래블카드"}
 ];
+
 const GRADIENTS = [
   "linear-gradient(135deg,#e0c3fc,#8ec5fc)",
   "linear-gradient(135deg,#f6d365,#fda085)",
@@ -57,38 +53,46 @@ const GRADIENTS = [
   "linear-gradient(135deg,#cfd9df,#e2ebf0)",
 ];
 
-const FLAG_MAP = {"한국":"🇰🇷","대한민국":"🇰🇷","korea":"🇰🇷","south korea":"🇰🇷","일본":"🇯🇵","japan":"🇯🇵","미국":"🇺🇸","usa":"🇺🇸"};
+const FLAG_MAP = {"한국":"🇰🇷","korea":"🇰🇷","일본":"🇯🇵","japan":"🇯🇵","미국":"🇺🇸","usa":"🇺🇸","태국":"🇹🇭","베트남":"🇻🇳","대만":"🇹🇼","프랑스":"🇫🇷","영국":"🇬🇧"};
 const guessFlag = c => c ? (FLAG_MAP[c.toLowerCase().trim()] || null) : null;
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
-const newWaypoint = () => ({id:uid(), name:"", lat:null, lon:null, transport:"transit", time:"", travelTime:"", icon:""});
-const getWaypoints = d => {
-  if (safeArr(d?.waypoints).length) return d.waypoints;
-  if (d?.city) return [{...newWaypoint(), id:"lg", name:d.city}];
-  return [newWaypoint()];
-};
+const newWaypoint = () => ({id:uid(), name:"", lat:null, lon:null, time:"", icon:""});
+const getWaypoints = d => safeArr(d?.waypoints).length ? d.waypoints : [newWaypoint()];
 const getPlaceNames = d => getWaypoints(d).map(w=>w.name).filter(Boolean);
 
-/* ── Place Search (Fixed with Nominatim OSM API) ─────────────────────────── */
+/* ── Place Search (Upgraded to Photon Komoot API for POI & Multilingual) ── */
 async function fetchPlaces(query) {
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`);
+    // Photon API는 OSM 데이터를 기반으로 식당, 호텔, 랜드마크 다국어 검색에 훨씬 강력합니다.
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=7`);
     const data = await res.json();
-    return data.map(item => ({
-      name: item.name || item.display_name.split(",")[0],
-      sub: item.display_name,
-      lat: item.lat,
-      lon: item.lon,
-      icon: "📍"
-    }));
+    
+    return data.features.map(f => {
+      const p = f.properties;
+      const name = p.name || p.street || p.city || "알 수 없는 장소";
+      
+      // 주소 조합 (중복 제거)
+      const subArr = [p.street, p.city, p.state, p.country].filter(Boolean);
+      const sub = [...new Set(subArr)].join(", ");
+      
+      // 장소 타입에 따른 아이콘 자동 매칭
+      let icon = "📍";
+      if (p.osm_value === "hotel" || p.osm_value === "guest_house") icon = "🏨";
+      else if (p.osm_value === "restaurant" || p.osm_value === "cafe") icon = "🍽️";
+      else if (p.osm_value === "museum" || p.osm_value === "attraction") icon = "🏛️";
+      else if (p.osm_value === "mall" || p.osm_value === "supermarket") icon = "🛍️";
+      
+      return {
+        name, sub, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], icon
+      };
+    }).filter((item, index, self) => // 중복 결과 제거
+      index === self.findIndex((t) => t.name === item.name && t.lat === item.lat)
+    ).slice(0, 5);
   } catch (e) { return []; }
 }
 
-/* ── Exchange Rates (Mocked for Vercel without Backend) ──────────────────── */
-const FALLBACK_RATES = {KRW:1,USD:1380,EUR:1510,JPY:9.2,GBP:1750,CNY:192,THB:39,VND:0.054,SGD:1020,AUD:900,TWD:43,HKD:177};
-async function getExchangeRates() { return FALLBACK_RATES; } // 복잡한 API 대신 기본 환율 제공
-
-/* ── Canvas Map (OSM tiles) ──────────────────────────────────────────────── */
+/* ── Canvas Map ──────────────────────────────────────────────────────────── */
 const lon2tile = (lon,z) => Math.floor((lon+180)/360 * (1<<z));
 const lat2tile = (lat,z) => Math.floor((1 - Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180))/Math.PI)/2 * (1<<z));
 const tile2lon = (x,z) => x/(1<<z)*360 - 180;
@@ -104,7 +108,7 @@ function MapCanvas({ waypoints }) {
     const ctx = canvas.getContext("2d");
     const W = canvas.offsetWidth || 620, H = 250;
     canvas.width = W; canvas.height = H;
-    ctx.fillStyle = "#F0F4F8"; ctx.fillRect(0,0,W,H); // Light background for map
+    ctx.fillStyle = "#F0F4F8"; ctx.fillRect(0,0,W,H);
     setMapStatus("loading");
 
     const lats = waypoints.map(w=>parseFloat(w.lat)).filter(n=>!isNaN(n));
@@ -115,7 +119,7 @@ function MapCanvas({ waypoints }) {
     const minLon=Math.min(...lons), maxLon=Math.max(...lons);
     const cLat=(minLat+maxLat)/2, cLon=(minLon+maxLon)/2;
 
-    let zoom = 13;
+    let zoom = 14;
     const span = Math.max(maxLat-minLat, maxLon-minLon);
     if (span>40) zoom=4; else if (span>20) zoom=5; else if (span>10) zoom=6;
     else if (span>5) zoom=7; else if (span>2) zoom=9; else if (span>0.5) zoom=11;
@@ -133,7 +137,7 @@ function MapCanvas({ waypoints }) {
     const drawPins = () => {
       const pts = waypoints.map(w=>({x:px(parseFloat(w.lon)),y:py(parseFloat(w.lat)),w}));
       if (pts.length>1) {
-        ctx.beginPath(); ctx.strokeStyle="#8A6B3E"; ctx.lineWidth=3; // Premium Gold Line
+        ctx.beginPath(); ctx.strokeStyle="#8A6B3E"; ctx.lineWidth=3;
         ctx.setLineDash([8,8]);
         ctx.moveTo(pts[0].x,pts[0].y); pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y)); ctx.stroke();
         ctx.setLineDash([]);
@@ -164,15 +168,15 @@ function MapCanvas({ waypoints }) {
     <div style={{borderRadius:16,overflow:"hidden",border:"1px solid rgba(0,0,0,.08)",boxShadow:"0 10px 30px rgba(0,0,0,.05)",position:"relative"}}>
       <canvas ref={canvasRef} style={{width:"100%",height:250,display:"block",background:"#F0F4F8"}}/>
       {mapStatus==="loading"&&(
-        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",display:"flex",flexDirection:"column",alignItems:"center",gap:8,background:"rgba(255,255,255,0.8)",backdropFilter:"blur(4px)",padding:"10px 20px",borderRadius:20}}>
-          <span style={{fontSize:12,color:"#4A5568",fontWeight:600}}>지도 로딩중...</span>
+        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",display:"flex",alignItems:"center",gap:8,background:"rgba(255,255,255,0.8)",backdropFilter:"blur(4px)",padding:"10px 20px",borderRadius:20}}>
+          <span style={{fontSize:12,color:"#4A5568",fontWeight:600}}>지도 데이터를 불러오는 중...</span>
         </div>
       )}
     </div>
   );
 }
 
-/* ── Place Search (Autocomplete Component) ───────────────────────────────── */
+/* ── Place Search Autocomplete ───────────────────────────────────────────── */
 function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
   const [q, setQ]         = useState(value || "");
   const [results, setRes] = useState([]);
@@ -189,7 +193,7 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
       setLd(true);
       const list = await fetchPlaces(v);
       setRes(list); setOpen(list.length > 0); setLd(false);
-    }, 450);
+    }, 500);
   }, []);
 
   const handleChange = e => {
@@ -198,7 +202,7 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
 
   const handlePick = item => {
     setQ(item.name); setOpen(false); setRes([]);
-    onSelect({ name: item.name, lat: String(item.lat), lon: String(item.lon), icon: item.icon || "📍" });
+    onSelect({ name: item.name, lat: String(item.lat), lon: String(item.lon), icon: item.icon });
   };
 
   useEffect(() => {
@@ -210,19 +214,22 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
   return (
     <div ref={wrapRef} style={{position:"relative",flex:1,minWidth:0}}>
       <div style={{position:"relative"}}>
-        <input value={q} onChange={handleChange} placeholder={placeholder||"장소 검색..."}
+        <input value={q} onChange={handleChange} placeholder={placeholder||"호텔, 식당, 지명 검색..."}
           onFocus={()=>results.length>0 && setOpen(true)}
           style={{paddingRight: loading ? 42 : 13}} />
         {loading && <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"#A0AEC0"}}>검색중</span>}
       </div>
 
       {open && results.length > 0 && (
-        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"#FFFFFF",border:"1px solid rgba(0,0,0,.08)",borderRadius:12,zIndex:1000,overflow:"hidden",boxShadow:"0 18px 40px rgba(0,0,0,.1)"}}>
+        <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"#FFFFFF",border:"1px solid rgba(0,0,0,.08)",borderRadius:12,zIndex:1000,overflow:"hidden",boxShadow:"0 18px 40px rgba(0,0,0,.15)"}}>
           {results.map((item,i) => (
-            <div key={i} style={{padding:"12px 14px",cursor:"pointer",borderBottom:"1px solid #EDF2F7"}}
+            <div key={i} style={{padding:"12px 14px",cursor:"pointer",borderBottom:"1px solid #EDF2F7",display:"flex",gap:10,alignItems:"center"}}
               onMouseDown={()=>handlePick(item)}>
-              <div style={{color:"#2D3748",fontSize:14,fontWeight:600}}>{item.name}</div>
-              {item.sub && <div style={{color:"#A0AEC0",fontSize:11,marginTop:3}}>{item.sub}</div>}
+              <span style={{fontSize:18}}>{item.icon}</span>
+              <div>
+                <div style={{color:"#2D3748",fontSize:14,fontWeight:600}}>{item.name}</div>
+                {item.sub && <div style={{color:"#A0AEC0",fontSize:11,marginTop:2}}>{item.sub}</div>}
+              </div>
             </div>
           ))}
         </div>
@@ -243,13 +250,13 @@ function WaypointsEditor({ waypoints, onChange }) {
   return (
     <div>
       {waypoints.map((wp, i) => (
-        <div key={wp.id} style={{marginBottom:10, background:"#FFF", padding:"14px", borderRadius:16, border:"1px solid #E2E8F0", boxShadow:"0 2px 10px rgba(0,0,0,0.02)"}}>
+        <div key={wp.id} style={{marginBottom:10, background:"#F7FAFC", padding:"14px", borderRadius:16, border:"1px solid #E2E8F0"}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
             <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#FFF",background:wp.lat?"#8A6B3E":"#CBD5E0",boxShadow:"0 4px 10px rgba(138,107,62,0.3)"}}>
               {i+1}
             </div>
             <PlaceSearch
-              value={safeStr(wp.name)} placeholder={i===0 ? "출발 장소 검색..." : "경유/도착 장소 검색..."}
+              value={safeStr(wp.name)} placeholder={i===0 ? "출발 장소 (호텔/공항 등)..." : "다음 목적지 검색..."}
               onSelect={p => updateWp(wp.id, {name:p.name, lat:p.lat, lon:p.lon, icon:p.icon})}
               onNameChange={n => updateWp(wp.id, {name:n, lat:null, lon:null, icon:""})}
             />
@@ -297,37 +304,22 @@ export default function WanderLog() {
     <div className="app-wrapper">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Pretendard:wght@400;500;600;700&display=swap');
-        
         * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
-        body { background: #F9F9F8; font-family:'Pretendard', 'Apple SD Gothic Neo', sans-serif; color: #2D3748; letter-spacing: -0.3px; }
+        body { background: #F9F9F8; font-family:'Pretendard', sans-serif; color: #2D3748; letter-spacing: -0.3px; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 10px; }
         
-        /* 폼 요소 디자인 (Light Premium) */
         input, textarea, select { 
-          background: #FFFFFF!important; 
-          border: 1px solid #E2E8F0!important; 
-          color: #2D3748!important; 
-          border-radius: 12px; 
-          padding: 14px 16px; 
-          font-family: inherit; 
-          font-size: 15px; 
-          outline: none; 
-          width: 100%; 
-          box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-          transition: all 0.2s;
+          background: #FFFFFF!important; border: 1px solid #E2E8F0!important; color: #2D3748!important; 
+          border-radius: 12px; padding: 14px 16px; font-family: inherit; font-size: 15px; outline: none; 
+          width: 100%; box-shadow: 0 2px 6px rgba(0,0,0,0.02); transition: all 0.2s;
         }
-        input:focus, textarea:focus, select:focus { 
-          border-color: #8A6B3E!important; 
-          box-shadow: 0 0 0 3px rgba(138,107,62,0.15)!important; 
-        }
+        input:focus, textarea:focus, select:focus { border-color: #8A6B3E!important; box-shadow: 0 0 0 3px rgba(138,107,62,0.15)!important; }
         input::placeholder, textarea::placeholder { color: #A0AEC0!important; font-weight: 400; }
         
-        /* 공통 유틸리티 */
         .tbtn { transition:all .15s ease-out; cursor:pointer; }
         .tbtn:active { transform:scale(.97); opacity:.8; }
         
-        /* 레이아웃 (반응형 스플릿 뷰) */
         .app-wrapper { display: flex; min-height: 100vh; background: #F9F9F8; }
         .left-panel, .right-panel { width: 100%; height: 100vh; overflow-y: auto; overflow-x: hidden; background: #F9F9F8; }
 
@@ -345,12 +337,10 @@ export default function WanderLog() {
         }
       `}</style>
 
-      {/* 좌측 패널: 홈 */}
       <div className={`left-panel ${screen === 'home' ? 'active-mobile' : 'hidden-mobile'}`}>
         <HomeScreen trips={trips} stats={stats} onSelect={t=>{setST(t); setScreen("trip");}} onNew={()=>setModal(true)} />
       </div>
 
-      {/* 우측 패널: 상세 */}
       <div className={`right-panel ${screen !== 'home' ? 'active-mobile' : 'hidden-mobile'}`}>
         {screen === "trip" && selTrip && <TripScreen trip={selTrip} onBack={()=>setScreen("home")} onSelectDay={d=>{setSD(d); setScreen("day");}} onUpdate={updateTrip} onDelete={deleteTrip} />}
         {screen === "day" && selDay && selTrip && <DayScreen day={selDay} trip={selTrip} onBack={() => setScreen("trip")} onUpdate={u => { const t = {...selTrip, days: selTrip.days.map(d=>d.date===u.date?u:d)}; updateTrip(t); setSD(u); }} />}
@@ -380,15 +370,6 @@ function HomeScreen({ trips, stats, onSelect, onNew }) {
           <button style={S.btnPrimary} className="tbtn" onClick={onNew}>새 여행</button>
         </div>
         
-        <div style={{display:"flex",gap:12,marginBottom:32}}>
-          {[{v:trips.length,l:"Trips"},{v:stats.places,l:"Places"},{v:stats.days,l:"Days"}].map(x=>(
-            <div key={x.l} style={{flex:1,background:"#F7FAFC",borderRadius:16,padding:"16px 12px",textAlign:"center",border:"1px solid #EDF2F7"}}>
-              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,fontWeight:700,color:"#8A6B3E",lineHeight:1}}>{x.v}</div>
-              <div style={{fontSize:11,color:"#A0AEC0",marginTop:6,fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{x.l}</div>
-            </div>
-          ))}
-        </div>
-
         {trips.length===0 ? (
           <div style={{textAlign:"center",padding:"60px 20px",background:"#F8FAFC",borderRadius:24,border:"1px dashed #CBD5E0"}}>
             <div style={{fontSize:40,marginBottom:16}}>🧳</div>
@@ -425,8 +406,6 @@ function TripScreen({ trip, onBack, onSelectDay, onUpdate, onDelete }) {
     <div style={{height:"100%", overflowY:"auto", paddingBottom:80}}>
       <div style={{height:280,position:"relative",background:trip.coverImage?`url(${trip.coverImage}) center/cover`:trip.gradient}}>
         <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.7),transparent 70%)"}}/>
-        
-        {/* 상단 액션 바 */}
         <div style={{position:"absolute",top:20,left:20,right:20,display:"flex",justifyContent:"space-between",zIndex:10}}>
           <button style={S.glassBtn} className="tbtn mobile-back-btn" onClick={onBack}>← 뒤로</button>
           <div style={{marginLeft:"auto", display:"flex",gap:10}}>
@@ -440,8 +419,6 @@ function TripScreen({ trip, onBack, onSelectDay, onUpdate, onDelete }) {
             <button style={{...S.glassBtn,color:"#FFB3B3"}} className="tbtn" onClick={()=>{if(confirm("정말 삭제할까요?"))onDelete(trip.id)}}>삭제</button>
           </div>
         </div>
-
-        {/* 타이틀 영역 */}
         <div style={{position:"absolute",bottom:24,left:24,right:24,zIndex:5}}>
           <div style={{fontSize:48,marginBottom:8,filter:"drop-shadow(0 4px 12px rgba(0,0,0,0.4))"}}>{trip.flag||"✈️"}</div>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:700,color:"#FFF",textShadow:"0 4px 12px rgba(0,0,0,0.6)"}}>{trip.title}</div>
@@ -466,14 +443,20 @@ function TripScreen({ trip, onBack, onSelectDay, onUpdate, onDelete }) {
 
 function DayRow({ day, index, onClick }) {
   const wps = getWaypoints(day).filter(w=>w.name);
-  const photos = safeArr(day.photos);
+  const exps = safeArr(day.expenses);
+  const dailyTotal = exps.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
   return (
     <div className="tbtn" style={{display:"flex",gap:16,padding:"20px",marginBottom:16,background:"#FFF",borderRadius:20,border:"1px solid #EDF2F7",boxShadow:"0 8px 20px rgba(0,0,0,0.03)"}} onClick={onClick}>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontWeight:700,color:"#FFF",background:"#8A6B3E",padding:"6px 10px",borderRadius:10}}>Day {index+1}</div>
       </div>
       <div style={{flex:1}}>
-        <div style={{fontSize:16,fontWeight:700,color:"#2D3748",marginBottom:6}}>{fmtDate(day.date)}</div>
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
+          <div style={{fontSize:16,fontWeight:700,color:"#2D3748"}}>{fmtDate(day.date)}</div>
+          {exps.length > 0 && <span style={{fontSize:12, fontWeight:600, color:"#8A6B3E", background:"#FFF5EB", padding:"4px 8px", borderRadius:6}}>지출 {exps.length}건</span>}
+        </div>
+        
         {wps.length>0 && (
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
             {wps.slice(0,3).map((w,i)=><span key={i} style={{fontSize:12,color:"#4A5568",background:"#F7FAFC",padding:"4px 10px",borderRadius:8,border:"1px solid #E2E8F0"}}>{w.name}</span>)}
@@ -494,21 +477,33 @@ function PhotosTab({ photos }) {
   );
 }
 
-/* ── DAY SCREEN (상세 입력 화면) ─────────────────────────────────────────── */
+/* ── DAY SCREEN (일정 & 지출 내역 입력) ────────────────────────────────── */
 function DayScreen({ day, trip, onBack, onUpdate }) {
   const [wps,    setWps]    = useState(() => getWaypoints(day));
   const [diary,  setDiary]  = useState(() => safeStr(day.diary));
   const [photos, setPhotos] = useState(() => safeArr(day.photos));
+  const [exps,   setExps]   = useState(() => safeArr(day.expenses));
   const [saved,  setSaved]  = useState(false);
 
+  // 새로운 지출 내역 초기 폼
+  const [newExp, setNewExp] = useState({amount:"", category:"food", method:"card", currency:trip.currency||"KRW", memo:""});
+
   const save = () => {
-    onUpdate({...day, waypoints:wps, city:wps[0]?.name||"", diary, photos});
+    onUpdate({...day, waypoints:wps, city:wps[0]?.name||"", diary, photos, expenses:exps});
     setSaved(true); setTimeout(()=>setSaved(false), 2000);
   };
 
   const addPhotos = e => Array.from(e.target.files).forEach(f=>{
     const r=new FileReader(); r.onload=ev=>setPhotos(p=>[...p,ev.target.result]); r.readAsDataURL(f);
   });
+
+  const handleAddExp = () => {
+    if (!newExp.amount) return;
+    setExps([...exps, { id: uid(), ...newExp }]);
+    setNewExp({ ...newExp, amount:"", memo:"" }); // 기록 후 금액/메모만 초기화
+  };
+
+  const deleteExp = (id) => setExps(exps.filter(e => e.id !== id));
 
   return (
     <div style={{height:"100%", overflowY:"auto", paddingBottom:100, position:"relative"}}>
@@ -519,10 +514,78 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
       </div>
 
       <div style={{padding:"24px"}}>
-        {/* 장소 섹션 */}
+        
+        {/* 장소 검색 (Photon 적용) */}
         <div style={S.secBox}>
-          <div style={S.secTitle}>📍 일정 & 동선 검색</div>
+          <div style={S.secTitle}>📍 일정 & 동선 기록</div>
           <WaypointsEditor waypoints={wps} onChange={setWps}/>
+        </div>
+
+        {/* 💰 지출 내역 (새로운 기능) */}
+        <div style={S.secBox}>
+          <div style={S.secTitle}>💰 일일 지출 내역</div>
+          
+          <div style={{background:"#F7FAFC", padding:"16px", borderRadius:16, marginBottom:16, border:"1px solid #E2E8F0"}}>
+            <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12}}>
+              <div>
+                <label style={S.label}>카테고리</label>
+                <select value={newExp.category} onChange={e=>setNewExp({...newExp, category:e.target.value})}>
+                  {EXP_CATS.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>결제 수단</label>
+                <select value={newExp.method} onChange={e=>setNewExp({...newExp, method:e.target.value})}>
+                  {PAYMENT_METHODS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                </select>
+              </div>
+            </div>
+            
+            <div style={{display:"flex", gap:12, marginBottom:12}}>
+              <div style={{flex:1}}>
+                <label style={S.label}>금액</label>
+                <div style={{display:"flex", gap:8}}>
+                  <select value={newExp.currency} onChange={e=>setNewExp({...newExp, currency:e.target.value})} style={{width:90, padding:"12px 8px"}}>
+                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <input type="number" placeholder="금액" value={newExp.amount} onChange={e=>setNewExp({...newExp, amount:e.target.value})} style={{flex:1}} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{display:"flex", gap:12, alignItems:"flex-end"}}>
+              <div style={{flex:1}}>
+                <label style={S.label}>사용처 / 메모</label>
+                <input type="text" placeholder="예: 스타벅스 커피" value={newExp.memo} onChange={e=>setNewExp({...newExp, memo:e.target.value})} onKeyDown={e=>e.key==="Enter"&&handleAddExp()} />
+              </div>
+              <button onClick={handleAddExp} style={{...S.btnPrimary, padding:"14px 24px", height:"50px"}}>추가</button>
+            </div>
+          </div>
+
+          {/* 추가된 지출 목록 */}
+          {exps.length > 0 ? (
+            <div style={{display:"flex", flexDirection:"column", gap:10}}>
+              {exps.map(e => {
+                const cat = EXP_CATS.find(c => c.id === e.category);
+                return (
+                  <div key={e.id} style={{display:"flex", alignItems:"center", padding:"12px 16px", background:"#FFF", border:"1px solid #EDF2F7", borderRadius:12, gap:12}}>
+                    <div style={{fontSize:20}}>{cat?.icon}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:14, fontWeight:600, color:"#2D3748"}}>{e.memo || cat?.label}</div>
+                      <div style={{fontSize:11, color:"#A0AEC0", marginTop:2}}>{PAYMENT_METHODS.find(m=>m.id===e.method)?.label}</div>
+                    </div>
+                    <div style={{textAlign:"right", marginRight:8}}>
+                      <div style={{fontSize:15, fontWeight:700, color:"#8A6B3E"}}>{Number(e.amount).toLocaleString()}</div>
+                      <div style={{fontSize:11, color:"#A0AEC0"}}>{e.currency}</div>
+                    </div>
+                    <button onClick={()=>deleteExp(e.id)} style={{background:"none", border:"none", color:"#E53E3E", cursor:"pointer", fontSize:16}}>✕</button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{textAlign:"center", padding:"20px", color:"#A0AEC0", fontSize:13}}>지출 내역이 없습니다.</div>
+          )}
         </div>
 
         {/* 일기 섹션 */}
@@ -531,7 +594,7 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
           <textarea value={diary} onChange={e=>setDiary(e.target.value)} placeholder="오늘 어떤 멋진 일들이 있었나요?" style={{minHeight:150}}/>
         </div>
 
-        {/* 사진 섹션 (label 태그 사용하여 모바일 업로드 버그 해결) */}
+        {/* 사진 섹션 */}
         <div style={S.secBox}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={S.secTitle} style={{margin:0, fontWeight:700, fontSize:15, color:"#2D3748"}}>📷 사진 갤러리</div>
@@ -541,8 +604,7 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
             </label>
           </div>
           
-          {/* 네이버 마이박스 연동 준비 버튼 */}
-          <div style={{background:"#03C75A", color:"#FFF", padding:"12px 16px", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:16, cursor:"pointer", boxShadow:"0 4px 12px rgba(3,199,90,0.3)"}} onClick={() => alert("현재 프론트엔드 환경에서는 지원되지 않습니다. 추후 OAuth 기반 백엔드 연동이 필요합니다.")}>
+          <div style={{background:"#03C75A", color:"#FFF", padding:"12px 16px", borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:16, cursor:"pointer", boxShadow:"0 4px 12px rgba(3,199,90,0.3)"}} onClick={() => alert("현재 환경에서는 지원되지 않습니다. 추후 백엔드 연동이 필요합니다.")}>
             <span style={{fontWeight:800}}>N</span> <span>MYBOX 연동하여 가져오기</span>
           </div>
 
@@ -561,7 +623,7 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
 
 /* ── NEW TRIP MODAL ──────────────────────────────────────────────────────── */
 function NewTripModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({title:"",country:"",flag:"",startDate:"",endDate:"",gradient:GRADIENTS[0]});
+  const [form, setForm] = useState({title:"",country:"",flag:"",startDate:"",endDate:"",currency:"KRW",gradient:GRADIENTS[0]});
   const valid = form.title && form.startDate && form.endDate;
 
   const create = () => {
@@ -569,7 +631,7 @@ function NewTripModal({ onClose, onCreate }) {
     const dates = dateRange(form.startDate, form.endDate);
     onCreate({
       id:uid(), ...form, flag:form.flag||"✈️",
-      days: dates.map(date=>({date, waypoints:[newWaypoint()], diary:"", photos:[]}))
+      days: dates.map(date=>({date, waypoints:[newWaypoint()], diary:"", photos:[], expenses:[]}))
     });
   };
 
@@ -590,11 +652,19 @@ function NewTripModal({ onClose, onCreate }) {
             <div style={{flex:1}}><label style={S.label}>시작일</label><input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></div>
             <div style={{flex:1}}><label style={S.label}>종료일</label><input type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/></div>
           </div>
-          <div>
-            <label style={S.label}>테마 색상</label>
-            <div style={{display:"flex",gap:10,marginTop:8}}>
-              {GRADIENTS.map((g,i)=><div key={i} style={{width:40,height:40,borderRadius:12,background:g,cursor:"pointer",border:form.gradient===g?"3px solid #8A6B3E":"3px solid transparent"}} onClick={()=>setForm({...form,gradient:g})}/>)}
-            </div>
+          <div style={{display:"flex",gap:12}}>
+             <div style={{flex:1}}>
+               <label style={S.label}>기본 통화</label>
+               <select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}>
+                 {CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}
+               </select>
+             </div>
+             <div style={{flex:2}}>
+              <label style={S.label}>테마 색상</label>
+              <div style={{display:"flex",gap:10,marginTop:6}}>
+                {GRADIENTS.slice(0,4).map((g,i)=><div key={i} style={{width:32,height:32,borderRadius:8,background:g,cursor:"pointer",border:form.gradient===g?"3px solid #8A6B3E":"3px solid transparent"}} onClick={()=>setForm({...form,gradient:g})}/>)}
+              </div>
+             </div>
           </div>
         </div>
         <div style={{padding:"20px 24px",background:"#F8FAFC",display:"flex",justifyContent:"flex-end",gap:12}}>

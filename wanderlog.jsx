@@ -121,40 +121,58 @@ function placeIcon(type="") {
   return "📍";
 }
 
-/* ── Photon fallback (used only when /api/places is unavailable) ─────────── */
-async function fetchFallback(query) {
-  try {
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return safeArr(data.features).map(f => {
-      const p = f.properties || {};
-      const name = p.name || ""; if (!name) return null;
-      const city = p.city || p.town || p.village || "";
-      const country = p.country || "";
-      return { name, sub:[city,country].filter(Boolean).join(", "), icon:placeIcon(p.osm_value||""), lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0] };
-    }).filter(Boolean).slice(0, 5);
-  } catch { return []; }
-}
+/* ── API Key management ──────────────────────────────────────────────────── */
+const API_KEY_STORE = "wl_anthropic_key";
+const getApiKey  = ()    => { try { return localStorage.getItem(API_KEY_STORE) || ""; } catch { return ""; } };
+const saveApiKey = (key) => { try { localStorage.setItem(API_KEY_STORE, key); } catch {} };
 
-/* ── fetchPlaces: /api/places (Claude AI) with Photon fallback ───────────── */
+/* ── fetchPlaces: Claude AI 직접 호출 (한국어·영어·식당명 완전 지원) ──────── */
 async function fetchPlaces(query) {
   if (!query || query.trim().length < 1) return [];
 
-  // 1) 먼저 Vercel 서버리스 함수(/api/places) 호출 — Claude AI 기반
-  try {
-    const res = await fetch(`/api/places?q=${encodeURIComponent(query)}`, {
-      signal: AbortSignal.timeout(8000),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) return data;
-    }
-  } catch { /* 네트워크 오류 등 → fallback으로 진행 */ }
+  const apiKey = getApiKey();
+  if (!apiKey) return [];   // 키 없으면 빈 결과 (홈 화면에서 키 입력 유도)
 
-  // 2) 서버 미응답 시 Photon 폴백
-  return fetchFallback(query);
+  const prompt = `You are a travel place autocomplete assistant.
+User typed: "${query}"
+
+Return EXACTLY 6 real place suggestions as a JSON array.
+IMPORTANT language rule:
+- Korean input  → return Korean names  (예: "하카타 잇푸도", "에펠탑", "도쿄역")
+- Japanese input → return Japanese names
+- English input  → return English names
+- Mixed input   → match majority language
+
+Include ALL types: hotels, restaurants, cafes, bars, tourist spots, stations, airports, parks, shops.
+For restaurant/shop names: search by the exact name typed, even small local places.
+Use accurate real-world GPS coordinates.
+
+Icon rules (pick one emoji):
+🏨 hotel/hostel/ryokan  🍽️ restaurant/cafe/bar  🏛️ museum/temple/castle/attraction
+🚉 station/airport  🌿 park/nature  🏖️ beach  🛍️ shopping  🏥 hospital  📍 other
+
+Return ONLY a JSON array, no markdown, no explanation:
+[{"name":"...","sub":"city, country","icon":"emoji","lat":0.0,"lon":0.0}]`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type":"application/json", "x-api-key":apiKey, "anthropic-version":"2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 800,
+        messages: [{ role:"user", content:prompt }],
+      }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const text = (data.content?.[0]?.text || "").replace(/```json|```/g,"").trim();
+    const match = text.match(/\[[\s\S]*\]/);
+    const parsed = match ? JSON.parse(match[0]) : [];
+    return safeArr(parsed).filter(p =>
+      p.name && typeof p.lat === "number" && typeof p.lon === "number"
+    ).slice(0, 6);
+  } catch { return []; }
 }
 
 /* ── Google Maps URL ─────────────────────────────────────────────────────── */
@@ -176,13 +194,16 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
   const [res, setRes] = useState([]);
   const [ld,  setLd]  = useState(false);
   const [open,setOpen]= useState(false);
+  const [noKey, setNoKey] = useState(false);
   const debRef = useRef(), wrapRef = useRef();
 
   useEffect(() => { setQ(value || ""); }, [value]);
 
   const doSearch = useCallback(v => {
     clearTimeout(debRef.current);
-    if (!v || v.trim().length < 1) { setRes([]); setOpen(false); return; }
+    if (!v || v.trim().length < 1) { setRes([]); setOpen(false); setNoKey(false); return; }
+    if (!getApiKey()) { setNoKey(true); setOpen(false); setRes([]); return; }
+    setNoKey(false);
     debRef.current = setTimeout(async () => {
       setLd(true);
       const list = await fetchPlaces(v);
@@ -206,10 +227,10 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
     <div ref={wrapRef} style={{position:"relative",flex:1,minWidth:0}}>
       <div style={{position:"relative"}}>
         <input value={q} onChange={handleChange}
-          placeholder={placeholder || "장소 검색 (한국어·영어·현지어 모두 가능)"}
+          placeholder={getApiKey() ? (placeholder || "장소 검색 (한국어·영어·식당명...)") : "⚙️ 설정에서 API 키를 먼저 입력해주세요"}
           onFocus={() => res.length > 0 && setOpen(true)}
           className="place-input"
-          style={{paddingRight: ld ? 76 : 12}}/>
+          style={{paddingRight: ld ? 76 : 12, borderColor: noKey ? "#FBD38D" : undefined}}/>
         {ld && (
           <div style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",gap:5}}>
             <div className="spinner"/>
@@ -217,6 +238,11 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
           </div>
         )}
       </div>
+      {noKey && (
+        <div style={{position:"absolute",top:"calc(100% + 5px)",left:0,right:0,background:"#FFFBEB",border:"1px solid #FBD38D",borderRadius:10,padding:"9px 13px",zIndex:2000,fontSize:12.5,color:"#8A6B3E",fontWeight:500}}>
+          ⚙️ 홈 화면 상단의 <strong>설정</strong> 버튼에서 Anthropic API 키를 먼저 입력해주세요.
+        </div>
+      )}
       {open && res.length > 0 && (
         <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#FFF",border:"1px solid #E8ECF0",borderRadius:16,zIndex:2000,overflow:"hidden",boxShadow:"0 24px 48px rgba(0,0,0,.12)"}}>
           <div style={{padding:"7px 14px 5px",fontSize:10,color:"#B0BEC5",letterSpacing:.8,fontWeight:600,background:"#FAFAFA",borderBottom:"1px solid #F0F0F0",display:"flex",justifyContent:"space-between"}}>
@@ -490,6 +516,9 @@ export default function WanderLog() {
 
 /* ── HOME ────────────────────────────────────────────────────────────────── */
 function HomeScreen({ trips, stats, onSelect, onNew }) {
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const hasKey = !!getApiKey();
+
   return (
     <div style={{height:"100%",overflowY:"auto"}}>
       {/* Hero header */}
@@ -497,13 +526,37 @@ function HomeScreen({ trips, stats, onSelect, onNew }) {
         <div style={{position:"absolute",top:-30,right:-30,width:160,height:160,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
         <div style={{position:"absolute",bottom:-20,left:-20,width:100,height:100,borderRadius:"50%",background:"rgba(255,255,255,.03)"}}/>
         <div style={{position:"relative"}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:34,fontWeight:700,color:"#FFF",letterSpacing:.5,lineHeight:1.1}}>Wanderlog</div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,.6)",marginTop:5,letterSpacing:.5}}>나만의 프리미엄 여행 기록</div>
+          {/* Title row with settings button */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:34,fontWeight:700,color:"#FFF",letterSpacing:.5,lineHeight:1.1}}>Wanderlog</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,.6)",marginTop:5,letterSpacing:.5}}>나만의 프리미엄 여행 기록</div>
+            </div>
+            <button onClick={()=>setShowKeyModal(true)} title="AI 검색 설정"
+              style={{background: hasKey ? "rgba(100,200,100,.2)" : "rgba(255,200,50,.2)",
+                backdropFilter:"blur(10px)", border:`1px solid ${hasKey?"rgba(100,255,100,.35)":"rgba(255,200,50,.5)"}`,
+                color:"#FFF", borderRadius:10, padding:"7px 12px", fontSize:12, fontWeight:600, cursor:"pointer",
+                display:"flex", alignItems:"center", gap:5}}>
+              ⚙️ {hasKey ? "AI 검색 ✓" : "AI 검색 설정"}
+            </button>
+          </div>
           <button style={{marginTop:20,background:"rgba(255,255,255,.15)",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,.3)",color:"#FFF",borderRadius:12,padding:"10px 20px",fontWeight:600,fontSize:14,cursor:"pointer"}} className="tbtn" onClick={onNew}>
             + 새 여행 시작
           </button>
         </div>
       </div>
+
+      {/* API key notice when no key */}
+      {!hasKey && (
+        <div style={{margin:"16px 20px 0",padding:"12px 16px",background:"#FFFBEB",border:"1px solid #FBD38D",borderRadius:14,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setShowKeyModal(true)}>
+          <span style={{fontSize:20}}>🔑</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#8A6B3E"}}>AI 장소 검색을 사용하려면 API 키가 필요합니다</div>
+            <div style={{fontSize:12,color:"#B7A07A",marginTop:2}}>Anthropic API 키를 입력하면 한국어·식당명 검색이 완벽하게 동작합니다 →</div>
+          </div>
+        </div>
+      )}
+      {showKeyModal && <ApiKeyModal onClose={()=>setShowKeyModal(false)}/>}
 
       {/* Stats strip */}
       {stats.days > 0 && (
@@ -830,6 +883,88 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
         <button style={{...S.btnPrimary,width:"100%",padding:"16px",fontSize:16,borderRadius:16,pointerEvents:"all",...(saved?{background:"#48BB78",boxShadow:"0 6px 20px rgba(72,187,120,.3)"}:{})}} className="tbtn" onClick={save}>
           {saved?"✅ 저장완료":"저장하기"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── API KEY MODAL ───────────────────────────────────────────────────────── */
+function ApiKeyModal({ onClose }) {
+  const [key, setKey]       = useState(getApiKey);
+  const [testing, setTest]  = useState(false);
+  const [status, setStatus] = useState(""); // "ok" | "fail" | ""
+
+  const testAndSave = async () => {
+    if (!key.trim()) return;
+    setTest(true); setStatus("");
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":key.trim(),"anthropic-version":"2023-06-01"},
+        body: JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:10,messages:[{role:"user",content:"hi"}]}),
+      });
+      if (res.ok) {
+        saveApiKey(key.trim());
+        setStatus("ok");
+        setTimeout(onClose, 1200);
+      } else {
+        setStatus("fail");
+      }
+    } catch { setStatus("fail"); }
+    setTest(false);
+  };
+
+  const remove = () => { saveApiKey(""); setKey(""); setStatus(""); };
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",backdropFilter:"blur(8px)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
+      <div style={{background:"#FFF",borderRadius:"22px 22px 0 0",width:"100%",maxWidth:560,padding:"20px 24px 40px",boxShadow:"0 -16px 50px rgba(0,0,0,.15)"}} className="fade-up">
+        {/* Handle */}
+        <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
+          <div style={{width:40,height:4,borderRadius:2,background:"#E2E8F0"}}/>
+        </div>
+
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+          <div style={{fontSize:18,fontWeight:700,color:"#1A202C"}}>🔑 AI 장소 검색 설정</div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:18,color:"#A0AEC0",cursor:"pointer"}}>✕</button>
+        </div>
+        <div style={{fontSize:13,color:"#718096",marginBottom:20,lineHeight:1.6}}>
+          Anthropic API 키를 입력하면 <strong>한국어·영어·식당명·호텔명</strong> 검색이 완벽하게 동작합니다.<br/>
+          키는 이 기기의 브라우저에만 저장되며 외부로 전송되지 않습니다.
+        </div>
+
+        <label style={{fontSize:12,fontWeight:600,color:"#718096",display:"block",marginBottom:6}}>Anthropic API Key</label>
+        <input
+          type="password"
+          value={key}
+          onChange={e=>{setKey(e.target.value);setStatus("");}}
+          placeholder="sk-ant-api03-..."
+          style={{fontSize:14,letterSpacing:.5,marginBottom:12}}
+        />
+
+        {status==="ok"  && <div style={{fontSize:13,color:"#38A169",fontWeight:600,marginBottom:10}}>✅ 연결 성공! 이제 한국어 검색이 됩니다.</div>}
+        {status==="fail"&& <div style={{fontSize:13,color:"#E53E3E",fontWeight:600,marginBottom:10}}>❌ 키가 유효하지 않습니다. 다시 확인해주세요.</div>}
+
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={testAndSave} disabled={!key.trim()||testing}
+            style={{flex:1,background:"linear-gradient(135deg,#A88653,#8A6B3E)",color:"#FFF",border:"none",borderRadius:12,padding:"13px",fontWeight:700,fontSize:15,cursor:"pointer",opacity:(!key.trim()||testing)?0.5:1}}>
+            {testing ? "확인 중..." : "저장 및 테스트"}
+          </button>
+          {getApiKey() && (
+            <button onClick={remove} style={{padding:"13px 18px",borderRadius:12,border:"1px solid #FED7D7",background:"#FFF5F5",color:"#E53E3E",fontWeight:600,fontSize:14,cursor:"pointer"}}>
+              삭제
+            </button>
+          )}
+        </div>
+
+        <div style={{marginTop:16,padding:"12px 14px",background:"#F8FAFC",borderRadius:12,border:"1px solid #EDF2F7"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#4A5568",marginBottom:6}}>🔗 API 키 발급 방법</div>
+          <div style={{fontSize:12,color:"#718096",lineHeight:1.7}}>
+            1. <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" style={{color:"#8A6B3E",fontWeight:600}}>console.anthropic.com</a> 접속<br/>
+            2. 로그인 후 <strong>API Keys</strong> 메뉴 클릭<br/>
+            3. <strong>Create Key</strong> → 키 복사 후 위에 붙여넣기
+          </div>
+        </div>
       </div>
     </div>
   );

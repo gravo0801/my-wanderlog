@@ -26,7 +26,6 @@ const fmtShort  = d => d ? new Date(d).toLocaleDateString("ko-KR",{month:"short"
 const dateRange = (s,e) => { const r=[],c=new Date(s),end=new Date(e); while(c<=end){r.push(c.toISOString().slice(0,10));c.setDate(c.getDate()+1);} return r; };
 const safeArr   = v => Array.isArray(v) ? v : [];
 const safeStr   = v => typeof v === "string" ? v : "";
-const isKorean  = s => /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/.test(s);
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
 const CURRENCIES = ["KRW","USD","EUR","JPY","GBP","CNY","THB","VND","SGD","AUD","TWD","HKD"];
@@ -108,87 +107,54 @@ const newWaypoint = () => ({id:uid(),name:"",lat:null,lon:null,time:"",icon:"",t
 const getWaypoints  = d => safeArr(d?.waypoints).length ? d.waypoints : [newWaypoint()];
 const getPlaceNames = d => getWaypoints(d).map(w=>w.name).filter(Boolean);
 
-/* ── Place icon helper ───────────────────────────────────────────────────── */
+/* ── Place icon helper (for fallback API results) ────────────────────────── */
 function placeIcon(type="") {
   const t = type.toLowerCase();
-  if (["hotel","hostel","guest_house","motel","resort","ryokan","inn","lodge","accommodation","lodging"].some(x=>t.includes(x))) return "🏨";
-  if (["restaurant","cafe","fast_food","bar","pub","izakaya","ramen","sushi","food","eatery","bistro","brasserie","diner","tavern","canteen"].some(x=>t.includes(x))) return "🍽️";
-  if (["museum","attraction","viewpoint","monument","castle","temple","shrine","cathedral","church","ruins","artwork","heritage","gallery"].some(x=>t.includes(x))) return "🏛️";
+  if (["hotel","hostel","guest_house","motel","resort","ryokan","inn","lodge","accommodation"].some(x=>t.includes(x))) return "🏨";
+  if (["restaurant","cafe","fast_food","bar","pub","izakaya","ramen","sushi","food","eatery","bistro","diner"].some(x=>t.includes(x))) return "🍽️";
+  if (["museum","attraction","viewpoint","monument","castle","temple","shrine","cathedral","church","ruins","gallery"].some(x=>t.includes(x))) return "🏛️";
   if (["station","subway","tram","bus_stop","bus_station","airport","aerodrome","terminal"].some(x=>t.includes(x))) return "🚉";
-  if (["park","garden","nature_reserve","forest"].some(x=>t.includes(x))) return "🌿";
-  if (["beach","bay","coast","sea","ocean"].some(x=>t.includes(x))) return "🏖️";
-  if (["mall","shop","market","department","shopping"].some(x=>t.includes(x))) return "🛍️";
-  if (["hospital","clinic","pharmacy","medical"].some(x=>t.includes(x))) return "🏥";
-  if (["school","university","college","campus"].some(x=>t.includes(x))) return "🏫";
+  if (["park","garden","forest","nature"].some(x=>t.includes(x))) return "🌿";
+  if (["beach","bay","coast","sea"].some(x=>t.includes(x))) return "🏖️";
+  if (["mall","shop","market","shopping"].some(x=>t.includes(x))) return "🛍️";
+  if (["hospital","clinic","pharmacy"].some(x=>t.includes(x))) return "🏥";
   return "📍";
 }
 
-/* ── Dual Place Search: Photon + Nominatim ───────────────────────────────── */
-async function fetchPhoton(query) {
+/* ── Photon fallback (used only when /api/places is unavailable) ─────────── */
+async function fetchFallback(query) {
   try {
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6`;
-    const res = await fetch(url, {signal: AbortSignal.timeout(4000)});
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
     if (!res.ok) return [];
     const data = await res.json();
     return safeArr(data.features).map(f => {
       const p = f.properties || {};
-      const name = p.name || "";
-      if (!name) return null;
-      const city = p.city || p.town || p.village || p.county || "";
+      const name = p.name || ""; if (!name) return null;
+      const city = p.city || p.town || p.village || "";
       const country = p.country || "";
-      return {
-        name,
-        sub: [city, country].filter(Boolean).join(", "),
-        icon: placeIcon(p.osm_value || p.type || ""),
-        lat: f.geometry.coordinates[1],
-        lon: f.geometry.coordinates[0],
-      };
-    }).filter(Boolean);
+      return { name, sub:[city,country].filter(Boolean).join(", "), icon:placeIcon(p.osm_value||""), lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0] };
+    }).filter(Boolean).slice(0, 5);
   } catch { return []; }
 }
 
-async function fetchNominatim(query) {
-  try {
-    // accept-language: for Korean queries put ko first; for others use en,ja,ko
-    const lang = isKorean(query) ? "ko,ja,en" : "en,ja,ko";
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6&accept-language=${lang}`;
-    const res = await fetch(url, {
-      headers: {"Accept-Language": lang, "User-Agent": "WanderlogApp/1.0"},
-      signal: AbortSignal.timeout(5000)
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return safeArr(data).map(item => ({
-      name: item.name || item.display_name.split(",")[0],
-      sub: item.display_name,
-      icon: placeIcon(item.type || item.class || ""),
-      lat: parseFloat(item.lat),
-      lon: parseFloat(item.lon),
-    })).filter(x => x.name);
-  } catch { return []; }
-}
-
+/* ── fetchPlaces: /api/places (Claude AI) with Photon fallback ───────────── */
 async function fetchPlaces(query) {
   if (!query || query.trim().length < 1) return [];
+
+  // 1) 먼저 Vercel 서버리스 함수(/api/places) 호출 — Claude AI 기반
   try {
-    // Run both in parallel; Nominatim is primary for Korean, Photon for others
-    const [ph, nm] = await Promise.allSettled([fetchPhoton(query), fetchNominatim(query)]);
-    const photon   = ph.status === "fulfilled" ? ph.value : [];
-    const nominatim = nm.status === "fulfilled" ? nm.value : [];
+    const res = await fetch(`/api/places?q=${encodeURIComponent(query)}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch { /* 네트워크 오류 등 → fallback으로 진행 */ }
 
-    // Merge: prefer whichever returns more for Korean; for others lead with Photon
-    const primary   = isKorean(query) ? nominatim : photon;
-    const secondary = isKorean(query) ? photon : nominatim;
-    const combined  = [...primary, ...secondary];
-
-    // Deduplicate by normalized name
-    const seen = new Set();
-    return combined.filter(item => {
-      const key = (item.name || "").toLowerCase().replace(/\s+/g,"").slice(0, 10);
-      if (seen.has(key)) return false;
-      seen.add(key); return true;
-    }).slice(0, 6);
-  } catch { return []; }
+  // 2) 서버 미응답 시 Photon 폴백
+  return fetchFallback(query);
 }
 
 /* ── Google Maps URL ─────────────────────────────────────────────────────── */
@@ -253,8 +219,9 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
       </div>
       {open && res.length > 0 && (
         <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#FFF",border:"1px solid #E8ECF0",borderRadius:16,zIndex:2000,overflow:"hidden",boxShadow:"0 24px 48px rgba(0,0,0,.12)"}}>
-          <div style={{padding:"7px 14px 5px",fontSize:10,color:"#B0BEC5",letterSpacing:.8,fontWeight:600,background:"#FAFAFA",borderBottom:"1px solid #F0F0F0"}}>
-            호텔 · 식당 · 관광지 · 역 · 지명
+          <div style={{padding:"7px 14px 5px",fontSize:10,color:"#B0BEC5",letterSpacing:.8,fontWeight:600,background:"#FAFAFA",borderBottom:"1px solid #F0F0F0",display:"flex",justifyContent:"space-between"}}>
+            <span>AI 장소 검색</span>
+            <span style={{color:"#D0D8E0"}}>한국어 · 영어 · 식당명 지원</span>
           </div>
           {res.map((item, i) => (
             <div key={i}

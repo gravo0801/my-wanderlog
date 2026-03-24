@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-/* ?? Storage ??????????????????????????????????????????????????????????????? */
+/* \u2500\u2500 Storage \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 const STORAGE_KEY = "wl_trips";
 async function storageSave(trips) {
   try {
@@ -19,7 +19,7 @@ async function storageLoad() {
   } catch { return []; }
 }
 
-/* ?? Utilities ????????????????????????????????????????????????????????????? */
+/* \u2500\u2500 Utilities \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 const uid       = () => Math.random().toString(36).slice(2,10);
 const fmtDate   = d => d ? new Date(d).toLocaleDateString("ko-KR",{year:"numeric",month:"long",day:"numeric"}) : "";
 const fmtShort  = d => d ? new Date(d).toLocaleDateString("ko-KR",{month:"short",day:"numeric"}) : "";
@@ -27,36 +27,36 @@ const dateRange = (s,e) => { const r=[],c=new Date(s),end=new Date(e); while(c<=
 const safeArr   = v => Array.isArray(v) ? v : [];
 const safeStr   = v => typeof v === "string" ? v : "";
 
-/* ?? Constants ????????????????????????????????????????????????????????????? */
+/* \u2500\u2500 Constants \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 const CURRENCIES = ["KRW","USD","EUR","JPY","GBP","CNY","THB","VND","SGD","AUD","TWD","HKD"];
 const EXP_CATS = [
-  {id:"food",       label:"?앸퉬",   icon:"\uD83C\uDF5C", color:"#F6AD55"},
-  {id:"transport",  label:"援먰넻",   icon:"\uD83D\uDE8C", color:"#76E4F7"},
-  {id:"lodging",    label:"?숇컯",   icon:"\uD83C\uDFE8", color:"#90CDF4"},
-  {id:"sightseeing",label:"愿愿?,   icon:"\uD83C\uDFAD", color:"#9AE6B4"},
-  {id:"shopping",   label:"?쇳븨",   icon:"\uD83D\uDECD", color:"#FBD38D"},
-  {id:"other",      label:"湲고?",   icon:"\uD83D\uDCB3", color:"#D6BCFA"},
+  {id:"food",       label:"\uC2DD\uBE44",   icon:"\uD83C\uDF5C", color:"#F6AD55"},
+  {id:"transport",  label:"\uAD50\uD1B5",   icon:"\uD83D\uDE8C", color:"#76E4F7"},
+  {id:"lodging",    label:"\uC219\uBC15",   icon:"\uD83C\uDFE8", color:"#90CDF4"},
+  {id:"sightseeing",label:"\uAD00\uAD11",   icon:"\uD83C\uDFAD", color:"#9AE6B4"},
+  {id:"shopping",   label:"\uC1FC\uD551",   icon:"\uD83D\uDECD", color:"#FBD38D"},
+  {id:"other",      label:"\uAE30\uD0C0",   icon:"\uD83D\uDCB3", color:"#D6BCFA"},
 ];
 const PAYMENT_METHODS = [
-  {id:"card",   label:"?좎슜移대뱶"},
-  {id:"cash",   label:"?꾧툑"},
-  {id:"travel", label:"?몃옒釉붿껜?ъ뭅??},
+  {id:"card",   label:"\uC2E0\uC6A9\uCE74\uB4DC"},
+  {id:"cash",   label:"\uD604\uAE08"},
+  {id:"travel", label:"\uD2B8\uB798\uBE14\uCCB4\uD06C\uCE74\uB4DC"},
 ];
 const TRANSPORT_MODES = [
-  {id:"transit",  label:"?以묎탳??, icon:"\uD83D\uDE87", maps:"transit"},
-  {id:"subway",   label:"?꾩쿋",     icon:"\uD83D\uDE83", maps:"transit"},
-  {id:"bus",      label:"踰꾩뒪",     icon:"\uD83D\uDE8C", maps:"transit"},
-  {id:"taxi",     label:"?앹떆",     icon:"\uD83D\uDE95", maps:"driving"},
-  {id:"walking",  label:"?꾨낫",     icon:"\uD83D\uDEB6", maps:"walking"},
-  {id:"driving",  label:"?먮룞李?,   icon:"\uD83D\uDE97", maps:"driving"},
-  {id:"rental",   label:"?뚰듃移?,   icon:"\uD83D\uDE99", maps:"driving"},
-  {id:"bicycle",  label:"?먯쟾嫄?,   icon:"\uD83D\uDEB2", maps:"bicycling"},
-  {id:"train",    label:"湲곗감",     icon:"\uD83D\uDE84", maps:"transit"},
-  {id:"flight",   label:"??났",     icon:"\u2708",       maps:null},
-  {id:"boat",     label:"?좊컯",     icon:"\u26F4",       maps:"transit"},
+  {id:"transit",  label:"\uB300\uC911\uAD50\uD1B5", icon:"\uD83D\uDE87", maps:"transit"},
+  {id:"subway",   label:"\uC804\uCCA0",     icon:"\uD83D\uDE83", maps:"transit"},
+  {id:"bus",      label:"\uBC84\uC2A4",     icon:"\uD83D\uDE8C", maps:"transit"},
+  {id:"taxi",     label:"\uD0DD\uC2DC",     icon:"\uD83D\uDE95", maps:"driving"},
+  {id:"walking",  label:"\uB3C4\uBCF4",     icon:"\uD83D\uDEB6", maps:"walking"},
+  {id:"driving",  label:"\uC790\uB3D9\uCC28",   icon:"\uD83D\uDE97", maps:"driving"},
+  {id:"rental",   label:"\uB80C\uD2B8\uCE74",   icon:"\uD83D\uDE99", maps:"driving"},
+  {id:"bicycle",  label:"\uC790\uC804\uAC70",   icon:"\uD83D\uDEB2", maps:"bicycling"},
+  {id:"train",    label:"\uAE30\uCC28",     icon:"\uD83D\uDE84", maps:"transit"},
+  {id:"flight",   label:"\uD56D\uACF5",     icon:"\u2708",       maps:null},
+  {id:"boat",     label:"\uC120\uBC15",     icon:"\u26F4",       maps:"transit"},
 ];
 const DURATION_OPTIONS = [
-  {value:"",      label:"?뚯슂?쒓컙"},
+  {value:"",      label:"\uC18C\uC694\uC2DC\uAC04"},
   {value:"0.5h",  label:"0.5h"},
   {value:"1h",    label:"1h"},
   {value:"1.5h",  label:"1.5h"},
@@ -81,33 +81,33 @@ const GRADIENTS = [
   "linear-gradient(135deg,#a18cd1 0%,#fbc2eb 100%)",
 ];
 const FLAG_MAP = {
-  "?쒓뎅":"?눖?눟","??쒕?援?:"?눖?눟","korea":"?눖?눟","south korea":"?눖?눟",
-  "?쇰낯":"?눓?눝","japan":"?눓?눝","以묎뎅":"?눊?눛","china":"?눊?눛",
-  "誘멸뎅":"?눣?눡","usa":"?눣?눡","united states":"?눣?눡","america":"?눣?눡",
-  "?곴뎅":"?눐?눉","uk":"?눐?눉","united kingdom":"?눐?눉",
-  "?꾨옉??:"?눏?눟","france":"?눏?눟","?낆씪":"?눍?눎","germany":"?눍?눎",
-  "?댄깉由ъ븘":"?눒?눢","italy":"?눒?눢","?ㅽ럹??:"?눎?눡","spain":"?눎?눡",
-  "?쒓뎅":"?눢?눑","thailand":"?눢?눑","踰좏듃??:"?눤?눛","vietnam":"?눤?눛",
-  "?留?:"?눢?눥","taiwan":"?눢?눥","?깃??щⅤ":"?눡?눐","singapore":"?눡?눐",
-  "?띿쉘":"?눑?눖","hong kong":"?눑?눖","?몄＜":"?눇?눣","australia":"?눇?눣",
-  "罹먮굹??:"?눊?눇","canada":"?눊?눇","?몃룄":"?눒?눛","india":"?눒?눛",
-  "?щⅤ?ш컝":"?눝?눢","portugal":"?눝?눢","?ㅻ뜙???:"?눛?눘","netherlands":"?눛?눘",
-  "?ㅼ쐞??:"?눊?눑","switzerland":"?눊?눑","?ㅼ뒪?몃━??:"?눇?눢","austria":"?눇?눢",
-  "洹몃━??:"?눐?눟","greece":"?눐?눟","?고궎":"?눢?눟","turkey":"?눢?눟",
-  "泥댁퐫":"?눊?눨","czech":"?눊?눨","?앷?由?:"?눑?눣","hungary":"?눑?눣",
-  "?щ줈?꾪떚??:"?눑?눟","croatia":"?눑?눟","紐⑤줈肄?:"?눚?눇","morocco":"?눚?눇",
-  "?댁쭛??:"?눎?눐","egypt":"?눎?눐","?꾨엻?먮?由ы듃":"?눇?눎","uae":"?눇?눎","dubai":"?눇?눎",
-  "留먮젅?댁떆??:"?눚?눧","malaysia":"?눚?눧","?몃룄?ㅼ떆??:"?눒?눍","indonesia":"?눒?눍",
-  "?꾨━?":"?눝?눑","philippines":"?눝?눑","硫뺤떆肄?:"?눚?눦","mexico":"?눚?눦",
+  "\uD55C\uAD6D":"\uD83C\uDDF0\uD83C\uDDF7","\uB300\uD55C\uBBFC\uAD6D":"\uD83C\uDDF0\uD83C\uDDF7","korea":"\uD83C\uDDF0\uD83C\uDDF7","south korea":"\uD83C\uDDF0\uD83C\uDDF7",
+  "\uC77C\uBCF8":"\uD83C\uDDEF\uD83C\uDDF5","japan":"\uD83C\uDDEF\uD83C\uDDF5","\uC911\uAD6D":"\uD83C\uDDE8\uD83C\uDDF3","china":"\uD83C\uDDE8\uD83C\uDDF3",
+  "\uBBF8\uAD6D":"\uD83C\uDDFA\uD83C\uDDF8","usa":"\uD83C\uDDFA\uD83C\uDDF8","united states":"\uD83C\uDDFA\uD83C\uDDF8","america":"\uD83C\uDDFA\uD83C\uDDF8",
+  "\uC601\uAD6D":"\uD83C\uDDEC\uD83C\uDDE7","uk":"\uD83C\uDDEC\uD83C\uDDE7","united kingdom":"\uD83C\uDDEC\uD83C\uDDE7",
+  "\uD504\uB791\uC2A4":"\uD83C\uDDEB\uD83C\uDDF7","france":"\uD83C\uDDEB\uD83C\uDDF7","\uB3C5\uC77C":"\uD83C\uDDE9\uD83C\uDDEA","germany":"\uD83C\uDDE9\uD83C\uDDEA",
+  "\uC774\uD0C8\uB9AC\uC544":"\uD83C\uDDEE\uD83C\uDDF9","italy":"\uD83C\uDDEE\uD83C\uDDF9","\uC2A4\uD398\uC778":"\uD83C\uDDEA\uD83C\uDDF8","spain":"\uD83C\uDDEA\uD83C\uDDF8",
+  "\uD0DC\uAD6D":"\uD83C\uDDF9\uD83C\uDDED","thailand":"\uD83C\uDDF9\uD83C\uDDED","\uBCA0\uD2B8\uB0A8":"\uD83C\uDDFB\uD83C\uDDF3","vietnam":"\uD83C\uDDFB\uD83C\uDDF3",
+  "\uB300\uB9CC":"\uD83C\uDDF9\uD83C\uDDFC","taiwan":"\uD83C\uDDF9\uD83C\uDDFC","\uC2F1\uAC00\uD3EC\uB974":"\uD83C\uDDF8\uD83C\uDDEC","singapore":"\uD83C\uDDF8\uD83C\uDDEC",
+  "\uD64D\uCF69":"\uD83C\uDDED\uD83C\uDDF0","hong kong":"\uD83C\uDDED\uD83C\uDDF0","\uD638\uC8FC":"\uD83C\uDDE6\uD83C\uDDFA","australia":"\uD83C\uDDE6\uD83C\uDDFA",
+  "\uCE90\uB098\uB2E4":"\uD83C\uDDE8\uD83C\uDDE6","canada":"\uD83C\uDDE8\uD83C\uDDE6","\uC778\uB3C4":"\uD83C\uDDEE\uD83C\uDDF3","india":"\uD83C\uDDEE\uD83C\uDDF3",
+  "\uD3EC\uB974\uD22C\uAC08":"\uD83C\uDDF5\uD83C\uDDF9","portugal":"\uD83C\uDDF5\uD83C\uDDF9","\uB124\uB35C\uB780\uB4DC":"\uD83C\uDDF3\uD83C\uDDF1","netherlands":"\uD83C\uDDF3\uD83C\uDDF1",
+  "\uC2A4\uC704\uC2A4":"\uD83C\uDDE8\uD83C\uDDED","switzerland":"\uD83C\uDDE8\uD83C\uDDED","\uC624\uC2A4\uD2B8\uB9AC\uC544":"\uD83C\uDDE6\uD83C\uDDF9","austria":"\uD83C\uDDE6\uD83C\uDDF9",
+  "\uADF8\uB9AC\uC2A4":"\uD83C\uDDEC\uD83C\uDDF7","greece":"\uD83C\uDDEC\uD83C\uDDF7","\uD130\uD0A4":"\uD83C\uDDF9\uD83C\uDDF7","turkey":"\uD83C\uDDF9\uD83C\uDDF7",
+  "\uCCB4\uCF54":"\uD83C\uDDE8\uD83C\uDDFF","czech":"\uD83C\uDDE8\uD83C\uDDFF","\uD5DD\uAC00\uB9AC":"\uD83C\uDDED\uD83C\uDDFA","hungary":"\uD83C\uDDED\uD83C\uDDFA",
+  "\uD06C\uB85C\uC544\uD2F0\uC544":"\uD83C\uDDED\uD83C\uDDF7","croatia":"\uD83C\uDDED\uD83C\uDDF7","\uBAA8\uB85C\uCF54":"\uD83C\uDDF2\uD83C\uDDE6","morocco":"\uD83C\uDDF2\uD83C\uDDE6",
+  "\uC774\uC9D1\uD2B8":"\uD83C\uDDEA\uD83C\uDDEC","egypt":"\uD83C\uDDEA\uD83C\uDDEC","\uC544\uB78D\uC5D0\uBBF8\uB9AC\uD2B8":"\uD83C\uDDE6\uD83C\uDDEA","uae":"\uD83C\uDDE6\uD83C\uDDEA","dubai":"\uD83C\uDDE6\uD83C\uDDEA",
+  "\uB9D0\uB808\uC774\uC2DC\uC544":"\uD83C\uDDF2\uD83C\uDDFE","malaysia":"\uD83C\uDDF2\uD83C\uDDFE","\uC778\uB3C4\uB124\uC2DC\uC544":"\uD83C\uDDEE\uD83C\uDDE9","indonesia":"\uD83C\uDDEE\uD83C\uDDE9",
+  "\uD544\uB9AC\uD540":"\uD83C\uDDF5\uD83C\uDDED","philippines":"\uD83C\uDDF5\uD83C\uDDED","\uBA55\uC2DC\uCF54":"\uD83C\uDDF2\uD83C\uDDFD","mexico":"\uD83C\uDDF2\uD83C\uDDFD",
 };
 const guessFlag = c => c ? (FLAG_MAP[c.toLowerCase().trim()] || null) : null;
 
-/* ?? Data helpers ?????????????????????????????????????????????????????????? */
+/* \u2500\u2500 Data helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 const newWaypoint = () => ({id:uid(),name:"",lat:null,lon:null,time:"",icon:"",transport:"transit",duration:"",voucher:{file:null,fileName:"",url:""}});
 const getWaypoints  = d => safeArr(d?.waypoints).length ? d.waypoints : [newWaypoint()];
 const getPlaceNames = d => getWaypoints(d).map(w=>w.name).filter(Boolean);
 
-/* ?? Place icon helper (for fallback API results) ?????????????????????????? */
+/* \u2500\u2500 Place icon helper (for fallback API results) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 function placeIcon(type="") {
   const t = type.toLowerCase();
   if (["hotel","hostel","guest_house","motel","resort","ryokan","inn","lodge","accommodation"].some(x=>t.includes(x))) return "\uD83C\uDFE8";
@@ -121,7 +121,7 @@ function placeIcon(type="") {
   return "\uD83D\uDCCD";
 }
 
-/* ?? fetchPlaces: /api/places ?쒕쾭由ъ뒪 ?⑥닔 ?몄텧 ??????????????????????????? */
+/* \u2500\u2500 fetchPlaces: /api/places \uC11C\uBC84\uB9AC\uC2A4 \uD568\uC218 \uD638\uCD9C \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 async function fetchPlaces(query) {
   if (!query || query.trim().length < 1) return [];
   try {
@@ -132,7 +132,7 @@ async function fetchPlaces(query) {
   } catch { return []; }
 }
 
-/* ?? Google Maps URL ??????????????????????????????????????????????????????? */
+/* \u2500\u2500 Google Maps URL \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 function buildGmapsUrl(waypoints) {
   const v = waypoints.filter(w => w.lat && w.lon);
   if (!v.length) return null;
@@ -145,7 +145,7 @@ function buildGmapsUrl(waypoints) {
   return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=${mode}`+(mid?`&waypoints=${mid}`:"");
 }
 
-/* ?? PlaceSearch ??????????????????????????????????????????????????????????? */
+/* \u2500\u2500 PlaceSearch \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
   const [q,   setQ]   = useState(value || "");
   const [res, setRes] = useState([]);
@@ -181,22 +181,22 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
     <div ref={wrapRef} style={{position:"relative",flex:1,minWidth:0}}>
       <div style={{position:"relative"}}>
         <input value={q} onChange={handleChange}
-          placeholder={placeholder || "?μ냼 寃??(?쒓뎅?는룹쁺?는룹떇?밸챸...)"}
+          placeholder={placeholder || "\uC7A5\uC18C \uAC80\uC0C9 (\uD55C\uAD6D\uC5B4\u00B7\uC601\uC5B4\u00B7\uC2DD\uB2F9\uBA85...)"}
           onFocus={() => res.length > 0 && setOpen(true)}
           className="place-input"
           style={{paddingRight: ld ? 76 : 12}}/>
         {ld && (
           <div style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",gap:5}}>
             <div className="spinner"/>
-            <span style={{fontSize:11,color:"#A0AEC0"}}>寃?됱쨷</span>
+            <span style={{fontSize:11,color:"#A0AEC0"}}>\uAC80\uC0C9\uC911</span>
           </div>
         )}
       </div>
       {open && res.length > 0 && (
         <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:"#FFF",border:"1px solid #E8ECF0",borderRadius:16,zIndex:2000,overflow:"hidden",boxShadow:"0 24px 48px rgba(0,0,0,.12)"}}>
           <div style={{padding:"7px 14px 5px",fontSize:10,color:"#B0BEC5",letterSpacing:.8,fontWeight:600,background:"#FAFAFA",borderBottom:"1px solid #F0F0F0",display:"flex",justifyContent:"space-between"}}>
-            <span>AI ?μ냼 寃??/span>
-            <span style={{color:"#D0D8E0"}}>?쒓뎅??쨌 ?곸뼱 쨌 ?앸떦紐?吏??/span>
+            <span>AI \uC7A5\uC18C \uAC80\uC0C9</span>
+            <span style={{color:"#D0D8E0"}}>\uD55C\uAD6D\uC5B4 \u00B7 \uC601\uC5B4 \u00B7 \uC2DD\uB2F9\uBA85 \uC9C0\uC6D0</span>
           </div>
           {res.map((item, i) => (
             <div key={i}
@@ -217,7 +217,7 @@ function PlaceSearch({ value, placeholder, onSelect, onNameChange }) {
   );
 }
 
-/* ?? WaypointsEditor ??????????????????????????????????????????????????????? */
+/* \u2500\u2500 WaypointsEditor \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 function WaypointsEditor({ waypoints, onChange }) {
   const [openV, setOpenV] = useState({});
   const valid = waypoints.filter(w=>w.lat&&w.lon);
@@ -241,7 +241,7 @@ function WaypointsEditor({ waypoints, onChange }) {
         const hasV = wp.voucher?.fileName || wp.voucher?.url;
         return (
           <div key={wp.id}>
-            {/* ?? Waypoint card ?? */}
+            {/* \u2500\u2500 Waypoint card \u2500\u2500 */}
             <div style={{background:"#FAFBFC",borderRadius:16,border:"1px solid #EDF0F3",padding:"14px 14px 10px",boxShadow:"0 2px 8px rgba(0,0,0,.03)"}}>
               {/* Row 1: badge + search + remove */}
               <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:10}}>
@@ -253,63 +253,64 @@ function WaypointsEditor({ waypoints, onChange }) {
                   boxShadow:wp.lat?"0 4px 12px rgba(138,107,62,.35)":"none",
                   transition:"all .2s",
                 }}>
-                  {wp.lat ? (wp.icon||"?뱧") : i+1}
+                  {wp.lat ? (wp.icon||"\uD83D\uDCCD") : i+1}
                 </div>
                 <PlaceSearch
                   value={safeStr(wp.name)}
-                  placeholder={i===0 ? "異쒕컻吏 寃??(?명뀛, 怨듯빆, ??..)" : "?ㅼ쓬 ?μ냼 寃??.."}
+                  placeholder={i===0 ? "\uCD9C\uBC1C\uC9C0 \uAC80\uC0C9 (\uD638\uD154, \uACF5\uD56D, \uC5ED...)" : "\uB2E4\uC74C \uC7A5\uC18C \uAC80\uC0C9..."}
                   onSelect={p=>updateWp(wp.id,{name:p.name,lat:p.lat,lon:p.lon,icon:p.icon})}
                   onNameChange={n=>updateWp(wp.id,{name:n,lat:null,lon:null,icon:""})}
                 />
                 {waypoints.length>1 && (
-                  <button onClick={()=>removeWp(wp.id)} style={{width:30,height:30,borderRadius:9,flexShrink:0,background:"#FFF5F5",color:"#FC8181",border:"none",cursor:"pointer",fontSize:13}}>??/button>
+                  <button onClick={()=>removeWp(wp.id)} style={{width:30,height:30,borderRadius:9,flexShrink:0,background:"#FFF5F5",color:"#FC8181",border:"none",cursor:"pointer",fontSize:13}}>\u2715</button>
                 )}
               </div>
               {/* Row 2: time + voucher */}
               <div style={{display:"flex",alignItems:"center",gap:8,paddingLeft:39}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,background:"#FFF",border:"1px solid #E2E8F0",borderRadius:10,padding:"0 10px",height:38}}>
-                  <span style={{fontSize:12,color:"#A0AEC0",userSelect:"none"}}>?븧</span>
+                  <span style={{fontSize:12,color:"#A0AEC0",userSelect:"none"}}>\uD83D\uDD50</span>
                   <input type="time" value={safeStr(wp.time)} onChange={e=>updateWp(wp.id,{time:e.target.value})}
                     className="time-input"
-                    title="?꾩갑 ?쒓컙"/>
+                    title="\uB3C4\uCC29 \uC2DC\uAC04"/>
                 </div>
-                <button onClick={()=>toggleV(wp.id)} title="諛붿슦泥?留곹겕 泥⑤?"
+                <button onClick={()=>toggleV(wp.id)} title="\uBC14\uC6B0\uCC98/\uB9C1\uD06C \uCCA8\uBD80"
                   style={{height:38,padding:"0 12px",borderRadius:10,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:600,border:`1px solid ${hasV?"#FBD38D":"#E2E8F0"}`,background:hasV?"#FFFBF0":openV[wp.id]?"#F7FAFC":"#FFF",color:hasV?"#8A6B3E":"#718096",transition:"all .15s"}}>
-                  ?뱨 {hasV?"諛붿슦泥??덉쓬":"諛붿슦泥?}
+                  \uD83D\uDCCE {hasV?"\uBC14\uC6B0\uCC98 \uC788\uC74C":"\uBC14\uC6B0\uCC98"}
                 </button>
               </div>
               {/* Voucher panel */}
               {openV[wp.id] && (
                 <div style={{marginTop:12,marginLeft:39,padding:"14px",background:"#FFFDF5",borderRadius:12,border:"1px solid #FBD38D"}}>
-                  <div style={{fontSize:12,color:"#8A6B3E",fontWeight:700,marginBottom:10}}>?뱨 諛붿슦泥?/ ?덉빟?뺤씤??/div>
+                  <div style={{fontSize:12,color:"#8A6B3E",fontWeight:700,marginBottom:10}}>\uD83D\uDCCE \uBC14\uC6B0\uCC98 / \uC608\uC57D\uD655\uC778\uC11C</div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
                     <label style={{...W.btn,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5,fontSize:12}}>
-                      ?뱞 ?뚯씪 泥⑤? (PDF/?대?吏)
+                      \uD83D\uDCC4 \uD30C\uC77C \uCCA8\uBD80 (PDF/\uC774\uBBF8\uC9C0)
                       <input type="file" accept="image/*,.pdf" hidden onChange={e=>handleFile(wp.id,e)}/>
                     </label>
                     {wp.voucher?.file && (
                       <a href={wp.voucher.file} download={wp.voucher.fileName}
                         style={{...W.btn,color:"#38A169",border:"1px solid #C6F6D5",background:"#F0FFF4",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:5,fontSize:12}}>
-                        ??{(wp.voucher.fileName||"").slice(0,22)}
+                        \u2705 {(wp.voucher.fileName||"").slice(0,22)}
                       </a>
                     )}
                   </div>
                   <div style={{position:"relative"}}>
                     <input type="url" value={safeStr(wp.voucher?.url)}
                       onChange={e=>updateWp(wp.id,{voucher:{...(wp.voucher||{}),url:e.target.value}})}
-                      placeholder="?덉빟 ?뺤씤 留곹겕 (https://...)"
+                      placeholder="\uC608\uC57D \uD655\uC778 \uB9C1\uD06C (https://...)"
                       style={{paddingRight:wp.voucher?.url?"68px":"16px"}}/>
                     {wp.voucher?.url && (
                       <a href={wp.voucher.url} target="_blank" rel="noopener noreferrer"
                         style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",fontSize:12,color:"#8A6B3E",fontWeight:700,textDecoration:"none",background:"#FFF5EB",padding:"4px 8px",borderRadius:7}}>
-                        ?닿린 ??                      </a>
+                        \uC5F4\uAE30 \u2197
+                      </a>
                     )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* ?? Transport connector ?? */}
+            {/* \u2500\u2500 Transport connector \u2500\u2500 */}
             {i < waypoints.length-1 && (
               <div style={{display:"flex",marginLeft:15}}>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:14,flexShrink:0}}>
@@ -318,7 +319,7 @@ function WaypointsEditor({ waypoints, onChange }) {
                   <div style={{width:2,flex:1,background:"linear-gradient(to bottom,#C8A97E,#E2E8F0)",minHeight:10}}/>
                 </div>
                 <div style={{flex:1,padding:"8px 0 8px 10px"}}>
-                  <div style={{fontSize:10,color:"#B0BEC5",fontWeight:600,letterSpacing:.5,marginBottom:7,textTransform:"uppercase"}}>?대룞?섎떒 쨌 ?뚯슂?쒓컙</div>
+                  <div style={{fontSize:10,color:"#B0BEC5",fontWeight:600,letterSpacing:.5,marginBottom:7,textTransform:"uppercase"}}>\uC774\uB3D9\uC218\uB2E8 \u00B7 \uC18C\uC694\uC2DC\uAC04</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
                     {TRANSPORT_MODES.map(m => {
                       const on = (wp.transport||"transit") === m.id;
@@ -345,11 +346,11 @@ function WaypointsEditor({ waypoints, onChange }) {
       })}
 
       <div style={{display:"flex",gap:10,marginTop:14,flexWrap:"wrap"}}>
-        <button onClick={addWp} style={W.btn}>+ ?μ냼 異붽?</button>
+        <button onClick={addWp} style={W.btn}>+ \uC7A5\uC18C \uCD94\uAC00</button>
         {valid.length>=1 && gmUrl && (
           <a href={gmUrl} target="_blank" rel="noopener noreferrer"
             style={{...W.mapBtn,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:6}}>
-            ?뿺 援ш?留듭쑝濡?蹂닿린
+            \uD83D\uDDFA \uAD6C\uAE00\uB9F5\uC73C\uB85C \uBCF4\uAE30
           </a>
         )}
       </div>
@@ -361,8 +362,9 @@ const W = {
   mapBtn: {background:"#FFFBF0",border:"1px solid #F6C84B",color:"#8A6B3E",padding:"8px 14px",borderRadius:10,fontWeight:600,fontSize:13,cursor:"pointer"},
 };
 
-/* ?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??   MAIN APP
-?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧?먥븧??*/
+/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   MAIN APP
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 export default function WanderLog() {
   const [trips,  setTrips] = useState([]);
   const [loaded, setLoaded]= useState(false);
@@ -404,7 +406,7 @@ export default function WanderLog() {
         }
         input::placeholder, textarea::placeholder { color:#C0C8D0!important; font-weight:400; }
 
-        /* Time input ??compact, no global padding overflow */
+        /* Time input \u2014 compact, no global padding overflow */
         .time-input {
           background:transparent!important; border:none!important; box-shadow:none!important;
           padding:0!important; width:auto!important; font-size:13px!important;
@@ -451,8 +453,8 @@ export default function WanderLog() {
         {screen==="day"  && selDay && selTrip && <DayScreen day={selDay} trip={selTrip} onBack={()=>setScreen("trip")} onUpdate={u=>{const t={...selTrip,days:selTrip.days.map(d=>d.date===u.date?u:d)};updateTrip(t);setSD(u);}}/>}
         {screen==="home" && (
           <div className="hidden-mobile" style={{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,color:"#B0BEC5"}}>
-            <div style={{fontSize:52,opacity:.35}}>??/div>
-            <div style={{fontSize:16,fontWeight:500}}>?쇱そ 紐⑸줉?먯꽌 ?ы뻾???좏깮?섍굅??異붽??댁＜?몄슂</div>
+            <div style={{fontSize:52,opacity:.35}}>\u2708</div>
+            <div style={{fontSize:16,fontWeight:500}}>\uC67C\uCABD \uBAA9\uB85D\uC5D0\uC11C \uC5EC\uD589\uC744 \uC120\uD0DD\uD558\uAC70\uB098 \uCD94\uAC00\uD574\uC8FC\uC138\uC694</div>
           </div>
         )}
       </div>
@@ -461,7 +463,7 @@ export default function WanderLog() {
   );
 }
 
-/* ?? HOME ?????????????????????????????????????????????????????????????????? */
+/* \u2500\u2500 HOME \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 function HomeScreen({ trips, stats, onSelect, onNew }) {
   return (
     <div style={{height:"100%",overflowY:"auto"}}>
@@ -471,9 +473,9 @@ function HomeScreen({ trips, stats, onSelect, onNew }) {
         <div style={{position:"absolute",bottom:-20,left:-20,width:100,height:100,borderRadius:"50%",background:"rgba(255,255,255,.03)"}}/>
         <div style={{position:"relative"}}>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:34,fontWeight:700,color:"#FFF",letterSpacing:.5,lineHeight:1.1}}>Wanderlog</div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,.6)",marginTop:5,letterSpacing:.5}}>?섎쭔???꾨━誘몄뾼 ?ы뻾 湲곕줉</div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,.6)",marginTop:5,letterSpacing:.5}}>\uB098\uB9CC\uC758 \uD504\uB9AC\uBBF8\uC5C4 \uC5EC\uD589 \uAE30\uB85D</div>
           <button style={{marginTop:20,background:"rgba(255,255,255,.15)",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,.3)",color:"#FFF",borderRadius:12,padding:"10px 20px",fontWeight:600,fontSize:14,cursor:"pointer"}} className="tbtn" onClick={onNew}>
-            + ???ы뻾 ?쒖옉
+            + \uC0C8 \uC5EC\uD589 \uC2DC\uC791
           </button>
         </div>
       </div>
@@ -481,7 +483,7 @@ function HomeScreen({ trips, stats, onSelect, onNew }) {
       {/* Stats strip */}
       {stats.days > 0 && (
         <div style={{display:"flex",gap:0,borderBottom:"1px solid #F0EDE8",background:"#FFF"}}>
-          {[{v:trips.length,l:"?ы뻾",i:"??},{v:stats.days,l:"湲곕줉??,i:"?뱟"},{v:stats.places,l:"諛⑸Ц吏",i:"?뱧"}].map((x,idx)=>(
+          {[{v:trips.length,l:"\uC5EC\uD589",i:"\u2708"},{v:stats.days,l:"\uAE30\uB85D\uC77C",i:"\uD83D\uDCC5"},{v:stats.places,l:"\uBC29\uBB38\uC9C0",i:"\uD83D\uDCCD"}].map((x,idx)=>(
             <div key={x.l} style={{flex:1,padding:"16px 8px",textAlign:"center",borderRight:idx<2?"1px solid #F0EDE8":"none"}}>
               <div style={{fontSize:13,marginBottom:3}}>{x.i}</div>
               <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:700,color:"#8A6B3E"}}>{x.v}</div>
@@ -494,9 +496,9 @@ function HomeScreen({ trips, stats, onSelect, onNew }) {
       <div style={{padding:"20px 20px 32px"}}>
         {trips.length===0 ? (
           <div style={{textAlign:"center",padding:"50px 20px",marginTop:8,background:"#FAFAF8",borderRadius:20,border:"1.5px dashed #D4C4A8"}}>
-            <div style={{fontSize:40,marginBottom:14,opacity:.7}}>?㎡</div>
-            <div style={{fontSize:17,fontWeight:600,color:"#2D3748",marginBottom:6}}>泥??ы뻾??湲곕줉?대낫?몄슂</div>
-            <div style={{fontSize:13,color:"#A0AEC0",lineHeight:1.6}}>?뚯쨷??異붿뼲???꾨쫫?듦쾶 蹂닿????쒕┰?덈떎</div>
+            <div style={{fontSize:40,marginBottom:14,opacity:.7}}>\uD83E\uDDF3</div>
+            <div style={{fontSize:17,fontWeight:600,color:"#2D3748",marginBottom:6}}>\uCCAB \uC5EC\uD589\uC744 \uAE30\uB85D\uD574\uBCF4\uC138\uC694</div>
+            <div style={{fontSize:13,color:"#A0AEC0",lineHeight:1.6}}>\uC18C\uC911\uD55C \uCD94\uC5B5\uC744 \uC544\uB984\uB2F5\uAC8C \uBCF4\uAD00\uD574 \uB4DC\uB9BD\uB2C8\uB2E4</div>
           </div>
         ) : (
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -508,21 +510,21 @@ function HomeScreen({ trips, stats, onSelect, onNew }) {
                 <div key={t.id} className="tbtn" style={{borderRadius:20,overflow:"hidden",boxShadow:"0 4px 20px rgba(0,0,0,.07)",border:"1px solid rgba(0,0,0,.04)",background:"#FFF"}} onClick={()=>onSelect(t)}>
                   <div style={{height:155,position:"relative",background:t.coverImage?`url(${t.coverImage}) center/cover`:t.gradient}}>
                     <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,.68) 0%,transparent 55%)"}}/>
-                    <div style={{position:"absolute",top:12,right:12,fontSize:28,filter:"drop-shadow(0 2px 6px rgba(0,0,0,.4))"}}>{t.flag||"??}</div>
+                    <div style={{position:"absolute",top:12,right:12,fontSize:28,filter:"drop-shadow(0 2px 6px rgba(0,0,0,.4))"}}>{t.flag||"\u2708"}</div>
                     <div style={{position:"absolute",bottom:14,left:18,right:18}}>
                       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:21,fontWeight:700,color:"#FFF",lineHeight:1.2,textShadow:"0 1px 8px rgba(0,0,0,.5)"}}>{t.title}</div>
                       <div style={{fontSize:12,color:"rgba(255,255,255,.8)",marginTop:4,display:"flex",gap:12,alignItems:"center"}}>
-                        <span>{fmtShort(t.startDate)} ??{fmtShort(t.endDate)}</span>
-                        <span style={{opacity:.6}}>쨌</span>
-                        <span>{days}??/span>
-                        {places.length>0 && <><span style={{opacity:.6}}>쨌</span><span>{places.length}怨?/span></>}
+                        <span>{fmtShort(t.startDate)} \u2014 {fmtShort(t.endDate)}</span>
+                        <span style={{opacity:.6}}>\u00B7</span>
+                        <span>{days}\uC77C</span>
+                        {places.length>0 && <><span style={{opacity:.6}}>\u00B7</span><span>{places.length}\uACF3</span></>}
                       </div>
                     </div>
                   </div>
                   {places.length>0 && (
                     <div style={{padding:"10px 16px 12px",display:"flex",flexWrap:"wrap",gap:5}}>
                       {places.slice(0,4).map(p=><span key={p} style={{fontSize:11,color:"#718096",background:"#F7F5F2",padding:"3px 9px",borderRadius:8,border:"1px solid #EDE9E3"}}>{p}</span>)}
-                      {places.length>4 && <span style={{fontSize:11,color:"#A0AEC0",padding:"3px 6px"}}>+{places.length-4}怨?/span>}
+                      {places.length>4 && <span style={{fontSize:11,color:"#A0AEC0",padding:"3px 6px"}}>+{places.length-4}\uACF3</span>}
                     </div>
                   )}
                 </div>
@@ -535,7 +537,7 @@ function HomeScreen({ trips, stats, onSelect, onNew }) {
   );
 }
 
-/* ?? TRIP SCREEN ??????????????????????????????????????????????????????????? */
+/* \u2500\u2500 TRIP SCREEN \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 function TripScreen({ trip, onBack, onSelectDay, onUpdate, onDelete }) {
   const [tab, setTab] = useState("timeline");
   const allWps = safeArr(trip.days).flatMap(d=>getWaypoints(d).filter(w=>w.lat&&w.lon));
@@ -547,25 +549,25 @@ function TripScreen({ trip, onBack, onSelectDay, onUpdate, onDelete }) {
       <div style={{height:260,position:"relative",background:trip.coverImage?`url(${trip.coverImage}) center/cover`:trip.gradient}}>
         <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,.75) 0%,rgba(0,0,0,.15) 50%,transparent 100%)"}}/>
         <div style={{position:"absolute",top:16,left:16,right:16,display:"flex",justifyContent:"space-between",zIndex:10}}>
-          <button style={S.glassBtn} className="tbtn mobile-back-btn" onClick={onBack}>???ㅻ줈</button>
+          <button style={S.glassBtn} className="tbtn mobile-back-btn" onClick={onBack}>\u2190 \uB4A4\uB85C</button>
           <div style={{display:"flex",gap:8}}>
             <label style={S.glassBtn} className="tbtn">
-              ?벜 而ㅻ쾭
+              \uD83D\uDCF7 \uCEE4\uBC84
               <input type="file" accept="image/*" hidden onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>onUpdate({...trip,coverImage:ev.target.result});r.readAsDataURL(f);}}/>
             </label>
-            <button style={{...S.glassBtn,color:"#FCA5A5"}} className="tbtn" onClick={()=>{if(confirm("??젣?좉퉴??"))onDelete(trip.id)}}>??젣</button>
+            <button style={{...S.glassBtn,color:"#FCA5A5"}} className="tbtn" onClick={()=>{if(confirm("\uC0AD\uC81C\uD560\uAE4C\uC694?"))onDelete(trip.id)}}>\uC0AD\uC81C</button>
           </div>
         </div>
         <div style={{position:"absolute",bottom:20,left:22,right:22,zIndex:5}}>
-          <div style={{fontSize:44,marginBottom:6,filter:"drop-shadow(0 3px 8px rgba(0,0,0,.4))"}}>{trip.flag||"??}</div>
+          <div style={{fontSize:44,marginBottom:6,filter:"drop-shadow(0 3px 8px rgba(0,0,0,.4))"}}>{trip.flag||"\u2708"}</div>
           <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,fontWeight:700,color:"#FFF",textShadow:"0 2px 12px rgba(0,0,0,.6)",lineHeight:1.2}}>{trip.title}</div>
-          <div style={{fontSize:13,color:"rgba(255,255,255,.8)",marginTop:5,fontWeight:400}}>{trip.country} 쨌 {fmtDate(trip.startDate)} ??{fmtDate(trip.endDate)}</div>
+          <div style={{fontSize:13,color:"rgba(255,255,255,.8)",marginTop:5,fontWeight:400}}>{trip.country} \u00B7 {fmtDate(trip.startDate)} \u2014 {fmtDate(trip.endDate)}</div>
         </div>
       </div>
 
       {/* Tabs */}
       <div style={{display:"flex",borderBottom:"1px solid #F0EDE8",padding:"0 8px",position:"sticky",top:0,background:"rgba(255,255,255,.97)",backdropFilter:"blur(14px)",zIndex:20,overflowX:"auto"}}>
-        {[["timeline","??꾨씪??],["map","?꾩껜 吏??],["photos","?ъ쭊"]].map(([id,lbl])=>(
+        {[["timeline","\uD0C0\uC784\uB77C\uC778"],["map","\uC804\uCCB4 \uC9C0\uB3C4"],["photos","\uC0AC\uC9C4"]].map(([id,lbl])=>(
           <button key={id} style={{padding:"15px 16px",fontSize:13.5,fontWeight:600,color:tab===id?"#8A6B3E":"#B0BEC5",background:"none",border:"none",cursor:"pointer",borderBottom:`2.5px solid ${tab===id?"#8A6B3E":"transparent"}`,transition:"all .18s",whiteSpace:"nowrap"}} onClick={()=>setTab(id)}>{lbl}</button>
         ))}
       </div>
@@ -575,17 +577,17 @@ function TripScreen({ trip, onBack, onSelectDay, onUpdate, onDelete }) {
 
         {tab==="map" && (
           <div className="fade-up" style={{textAlign:"center",padding:"40px 16px"}}>
-            <div style={{fontSize:52,marginBottom:14}}>?뿺</div>
-            <div style={{fontSize:18,fontWeight:700,color:"#2D3748",marginBottom:8,fontFamily:"'Cormorant Garamond',serif"}}>?꾩껜 ?ы뻾 ?숈꽑</div>
-            <div style={{fontSize:13,color:"#A0AEC0",lineHeight:1.7,marginBottom:24}}>?낅젰???μ냼 {allWps.length}怨녹쓣 援ш?留듭뿉???뺤씤?섏꽭??<br/>?좎쭨蹂??쇱??먯꽌 ?μ냼瑜?異붽??????덉뒿?덈떎.</div>
+            <div style={{fontSize:52,marginBottom:14}}>\uD83D\uDDFA</div>
+            <div style={{fontSize:18,fontWeight:700,color:"#2D3748",marginBottom:8,fontFamily:"'Cormorant Garamond',serif"}}>\uC804\uCCB4 \uC5EC\uD589 \uB3D9\uC120</div>
+            <div style={{fontSize:13,color:"#A0AEC0",lineHeight:1.7,marginBottom:24}}>\uC785\uB825\uB41C \uC7A5\uC18C {allWps.length}\uACF3\uC744 \uAD6C\uAE00\uB9F5\uC5D0\uC11C \uD655\uC778\uD558\uC138\uC694.<br/>\uB0A0\uC9DC\uBCC4 \uC77C\uC9C0\uC5D0\uC11C \uC7A5\uC18C\uB97C \uCD94\uAC00\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.</div>
             {gmUrl ? (
               <a href={gmUrl} target="_blank" rel="noopener noreferrer" style={{...S.btnPrimary,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:8}}>
-                ?뿺 援ш?留듭뿉??蹂닿린
+                \uD83D\uDDFA \uAD6C\uAE00\uB9F5\uC5D0\uC11C \uBCF4\uAE30
               </a>
-            ) : <div style={{color:"#C0C8D0",fontSize:13}}>?좎쭨蹂??쇱??먯꽌 ?μ냼瑜?異붽??섎㈃<br/>?꾩껜 ?숈꽑??援ш?留듭쑝濡?蹂????덉뒿?덈떎.</div>}
+            ) : <div style={{color:"#C0C8D0",fontSize:13}}>\uB0A0\uC9DC\uBCC4 \uC77C\uC9C0\uC5D0\uC11C \uC7A5\uC18C\uB97C \uCD94\uAC00\uD558\uBA74<br/>\uC804\uCCB4 \uB3D9\uC120\uC744 \uAD6C\uAE00\uB9F5\uC73C\uB85C \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4.</div>}
             {allWps.length>0 && (
               <div style={{marginTop:24,display:"flex",flexWrap:"wrap",gap:7,justifyContent:"center"}}>
-                {allWps.map((w,i)=><span key={i} style={{fontSize:12,color:"#6B7A8D",background:"#F7F5F2",padding:"5px 11px",borderRadius:10,border:"1px solid #EDE9E3"}}>{w.icon||"?뱧"} {w.name}</span>)}
+                {allWps.map((w,i)=><span key={i} style={{fontSize:12,color:"#6B7A8D",background:"#F7F5F2",padding:"5px 11px",borderRadius:10,border:"1px solid #EDE9E3"}}>{w.icon||"\uD83D\uDCCD"} {w.name}</span>)}
               </div>
             )}
           </div>
@@ -621,9 +623,9 @@ function DayRow({ day, index, total, onClick }) {
                 <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:6}}>
                   {wps.slice(0,3).map((w,i)=>(
                     <span key={i} style={{fontSize:11.5,color:"#5A6572",background:"#F7F5F2",padding:"3px 9px",borderRadius:8,border:"1px solid #EDE9E3",display:"inline-flex",alignItems:"center",gap:3}}>
-                      {w.icon||"?뱧"} {w.name}
+                      {w.icon||"\uD83D\uDCCD"} {w.name}
                       {w.time && <span style={{color:"#B0BEC5",fontSize:10}}> {w.time}</span>}
-                      {(w.voucher?.fileName||w.voucher?.url) && <span style={{color:"#C8A97E",fontSize:10}}>?뱨</span>}
+                      {(w.voucher?.fileName||w.voucher?.url) && <span style={{color:"#C8A97E",fontSize:10}}>\uD83D\uDCCE</span>}
                     </span>
                   ))}
                   {wps.length>3 && <span style={{fontSize:11,color:"#A0AEC0",padding:"3px 6px"}}>+{wps.length-3}</span>}
@@ -644,7 +646,7 @@ function DayRow({ day, index, total, onClick }) {
               </div>
             ) : null;
           })()}
-          {day.diary && <div style={{fontSize:13,color:"#8A9BB0",lineHeight:1.6,background:"#FAFAFA",padding:"9px 11px",borderRadius:10,fontStyle:"italic",marginTop:4}}>&ldquo;{day.diary.slice(0,65)}{day.diary.length>65?"??:""}&rdquo;</div>}
+          {day.diary && <div style={{fontSize:13,color:"#8A9BB0",lineHeight:1.6,background:"#FAFAFA",padding:"9px 11px",borderRadius:10,fontStyle:"italic",marginTop:4}}>&ldquo;{day.diary.slice(0,65)}{day.diary.length>65?"\u2026":""}&rdquo;</div>}
           {safeArr(day.photos).length>0 && (
             <div style={{display:"flex",gap:5,marginTop:10}}>
               {day.photos.slice(0,4).map((p,i)=><div key={i} style={{width:44,height:44,borderRadius:10,backgroundSize:"cover",backgroundPosition:"center",backgroundImage:`url(${p})`,border:"1px solid #EDE9E3"}}/>)}
@@ -653,7 +655,7 @@ function DayRow({ day, index, total, onClick }) {
           )}
         </div>
         {!day.diary && !wps.length && !safeArr(day.photos).length && (
-          <div style={{padding:"0 16px 14px",fontSize:12,color:"#C0C8D0",fontStyle:"italic"}}>??빐??湲곕줉 異붽??섍린...</div>
+          <div style={{padding:"0 16px 14px",fontSize:12,color:"#C0C8D0",fontStyle:"italic"}}>\uD0ED\uD574\uC11C \uAE30\uB85D \uCD94\uAC00\uD558\uAE30...</div>
         )}
       </div>
     </div>
@@ -662,7 +664,7 @@ function DayRow({ day, index, total, onClick }) {
 
 function PhotosTab({ photos }) {
   const [prev, setPrev] = useState(null);
-  if (!safeArr(photos).length) return <div style={{textAlign:"center",padding:"56px 0",color:"#C0C8D0",fontSize:14}}>?깅줉???ъ쭊???놁뒿?덈떎.</div>;
+  if (!safeArr(photos).length) return <div style={{textAlign:"center",padding:"56px 0",color:"#C0C8D0",fontSize:14}}>\uB4F1\uB85D\uB41C \uC0AC\uC9C4\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</div>;
   return (
     <div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(100px,1fr))",gap:10}}>
@@ -673,7 +675,7 @@ function PhotosTab({ photos }) {
   );
 }
 
-/* ?? DAY SCREEN ???????????????????????????????????????????????????????????? */
+/* \u2500\u2500 DAY SCREEN \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 function DayScreen({ day, trip, onBack, onUpdate }) {
   const [wps,    setWps]    = useState(()=>getWaypoints(day));
   const [diary,  setDiary]  = useState(()=>safeStr(day.diary));
@@ -694,13 +696,13 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
     <div style={{height:"100%",overflowY:"auto",paddingBottom:90}}>
       {/* Sticky header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px",background:"rgba(255,255,255,.97)",backdropFilter:"blur(14px)",position:"sticky",top:0,zIndex:30,borderBottom:"1px solid #F0EDE8"}}>
-        <button style={S.iconBtn} className="tbtn" onClick={onBack}>??/button>
+        <button style={S.iconBtn} className="tbtn" onClick={onBack}>\u2190</button>
         <div style={{textAlign:"center"}}>
           <div style={{fontSize:11,color:"#B0BEC5",fontWeight:600,letterSpacing:.8}}>DAY {idx+1}</div>
           <div style={{fontSize:15,fontWeight:700,color:"#1A202C"}}>{fmtDate(day.date)}</div>
         </div>
         <button style={{...S.btnPrimary,padding:"10px 20px",fontSize:14,...(saved?{background:"#48BB78",boxShadow:"0 4px 12px rgba(72,187,120,.3)"}:{})}} className="tbtn" onClick={save}>
-          {saved?"???꾨즺":"???}
+          {saved?"\u2705 \uC644\uB8CC":"\uC800\uC7A5"}
         </button>
       </div>
 
@@ -708,23 +710,23 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
 
         {/* Waypoints */}
         <div style={S.secBox}>
-          <div style={S.secTitle}>?뱧 ?쇱젙 & ?숈꽑</div>
+          <div style={S.secTitle}>\uD83D\uDCCD \uC77C\uC815 & \uB3D9\uC120</div>
           <WaypointsEditor waypoints={wps} onChange={setWps}/>
         </div>
 
         {/* Expenses */}
         <div style={S.secBox}>
-          <div style={S.secTitle}>?뮥 吏異??댁뿭</div>
+          <div style={S.secTitle}>\uD83D\uDCB0 \uC9C0\uCD9C \uB0B4\uC5ED</div>
           <div style={{background:"#FAFAF8",padding:"16px",borderRadius:16,marginBottom:14,border:"1px solid #F0EDE8"}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
               <div>
-                <label style={S.label}>移댄뀒怨좊━</label>
+                <label style={S.label}>\uCE74\uD14C\uACE0\uB9AC</label>
                 <select value={newExp.category} onChange={e=>setNewExp({...newExp,category:e.target.value})}>
                   {EXP_CATS.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={S.label}>寃곗젣 ?섎떒</label>
+                <label style={S.label}>\uACB0\uC81C \uC218\uB2E8</label>
                 <select value={newExp.method} onChange={e=>setNewExp({...newExp,method:e.target.value})}>
                   {PAYMENT_METHODS.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
                 </select>
@@ -734,11 +736,11 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
               <select value={newExp.currency} onChange={e=>setNewExp({...newExp,currency:e.target.value})} style={{width:88,padding:"12px 6px"}}>
                 {CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
-              <input type="number" placeholder="湲덉븸" value={newExp.amount} onChange={e=>setNewExp({...newExp,amount:e.target.value})} style={{flex:1}}/>
+              <input type="number" placeholder="\uAE08\uC561" value={newExp.amount} onChange={e=>setNewExp({...newExp,amount:e.target.value})} style={{flex:1}}/>
             </div>
             <div style={{display:"flex",gap:8}}>
-              <input type="text" placeholder="硫붾え (?? ?쇰찘吏? 吏?섏쿋)" value={newExp.memo} onChange={e=>setNewExp({...newExp,memo:e.target.value})} onKeyDown={e=>e.key==="Enter"&&addExp()} style={{flex:1}}/>
-              <button onClick={addExp} style={{...S.btnPrimary,padding:"0 20px",height:50,flexShrink:0}}>異붽?</button>
+              <input type="text" placeholder="\uBA54\uBAA8 (\uC608: \uB77C\uBA58\uC9D1, \uC9C0\uD558\uCCA0)" value={newExp.memo} onChange={e=>setNewExp({...newExp,memo:e.target.value})} onKeyDown={e=>e.key==="Enter"&&addExp()} style={{flex:1}}/>
+              <button onClick={addExp} style={{...S.btnPrimary,padding:"0 20px",height:50,flexShrink:0}}>\uCD94\uAC00</button>
             </div>
           </div>
           {exps.length>0 ? (
@@ -756,27 +758,27 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
                       <div style={{fontSize:15,fontWeight:700,color:"#8A6B3E"}}>{Number(e.amount).toLocaleString()}</div>
                       <div style={{fontSize:10,color:"#B0BEC5",letterSpacing:.5}}>{e.currency}</div>
                     </div>
-                    <button onClick={()=>setExps(exps.filter(x=>x.id!==e.id))} style={{background:"none",border:"none",color:"#FC8181",cursor:"pointer",fontSize:16,padding:"2px"}}>??/button>
+                    <button onClick={()=>setExps(exps.filter(x=>x.id!==e.id))} style={{background:"none",border:"none",color:"#FC8181",cursor:"pointer",fontSize:16,padding:"2px"}}>\u2715</button>
                   </div>
                 );
               })}
             </div>
-          ) : <div style={{textAlign:"center",padding:"16px",color:"#C0C8D0",fontSize:13}}>吏異??댁뿭???놁뒿?덈떎.</div>}
+          ) : <div style={{textAlign:"center",padding:"16px",color:"#C0C8D0",fontSize:13}}>\uC9C0\uCD9C \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</div>}
         </div>
 
         {/* Diary */}
         <div style={S.secBox}>
-          <div style={S.secTitle}>???ы뻾 ?명듃</div>
-          <textarea value={diary} onChange={e=>setDiary(e.target.value)} placeholder="?ㅻ뒛 ?대뼡 硫뗭쭊 ?쒓컙?ㅼ씠 ?덉뿀?섏슂?" style={{minHeight:140,lineHeight:1.7,fontSize:14,resize:"vertical"}}/>
-          {diary.length>0 && <div style={{textAlign:"right",fontSize:11,color:"#C0C8D0",marginTop:4}}>{diary.length}??/div>}
+          <div style={S.secTitle}>\u270D \uC5EC\uD589 \uB178\uD2B8</div>
+          <textarea value={diary} onChange={e=>setDiary(e.target.value)} placeholder="\uC624\uB298 \uC5B4\uB5A4 \uBA4B\uC9C4 \uC21C\uAC04\uB4E4\uC774 \uC788\uC5C8\uB098\uC694?" style={{minHeight:140,lineHeight:1.7,fontSize:14,resize:"vertical"}}/>
+          {diary.length>0 && <div style={{textAlign:"right",fontSize:11,color:"#C0C8D0",marginTop:4}}>{diary.length}\uC790</div>}
         </div>
 
         {/* Photos */}
         <div style={S.secBox}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <div style={S.secTitle} style={{margin:0}}>?벜 ?ъ쭊</div>
+            <div style={S.secTitle} style={{margin:0}}>\uD83D\uDCF7 \uC0AC\uC9C4</div>
             <label style={{...W.btn,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}} className="tbtn">
-              + ?ъ쭊 異붽?
+              + \uC0AC\uC9C4 \uCD94\uAC00
               <input type="file" accept="image/*" multiple hidden onChange={addPhotos}/>
             </label>
           </div>
@@ -784,14 +786,14 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
               {photos.map((p,i)=>(
                 <div key={i} style={{position:"relative",aspectRatio:"1",borderRadius:14,backgroundImage:`url(${p})`,backgroundSize:"cover",backgroundPosition:"center",boxShadow:"0 3px 10px rgba(0,0,0,.08)"}}>
-                  <button style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.55)",color:"#FFF",border:"none",width:22,height:22,borderRadius:"50%",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setPhotos(p=>p.filter((_,j)=>j!==i))}>??/button>
+                  <button style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.55)",color:"#FFF",border:"none",width:22,height:22,borderRadius:"50%",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setPhotos(p=>p.filter((_,j)=>j!==i))}>\u2715</button>
                 </div>
               ))}
             </div>
           ) : (
             <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:"28px",background:"#FAFAF8",borderRadius:16,border:"1.5px dashed #D4C4A8",cursor:"pointer"}}>
-              <span style={{fontSize:28,opacity:.35}}>?벜</span>
-              <span style={{fontSize:13,color:"#C0C8D0"}}>??빐???ъ쭊 異붽?</span>
+              <span style={{fontSize:28,opacity:.35}}>\uD83D\uDCF7</span>
+              <span style={{fontSize:13,color:"#C0C8D0"}}>\uD0ED\uD574\uC11C \uC0AC\uC9C4 \uCD94\uAC00</span>
               <input type="file" accept="image/*" multiple hidden onChange={addPhotos}/>
             </label>
           )}
@@ -801,14 +803,14 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
       {/* Floating save */}
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:560,padding:"10px 20px 22px",background:"linear-gradient(to top,rgba(255,255,255,1) 60%,transparent)",zIndex:30,pointerEvents:"none"}}>
         <button style={{...S.btnPrimary,width:"100%",padding:"16px",fontSize:16,borderRadius:16,pointerEvents:"all",...(saved?{background:"#48BB78",boxShadow:"0 6px 20px rgba(72,187,120,.3)"}:{})}} className="tbtn" onClick={save}>
-          {saved?"????μ셿猷?:"??ν븯湲?}
+          {saved?"\u2705 \uC800\uC7A5\uC644\uB8CC":"\uC800\uC7A5\uD558\uAE30"}
         </button>
       </div>
     </div>
   );
 }
 
-/* ?? NEW TRIP MODAL ???????????????????????????????????????????????????????? */
+/* \u2500\u2500 NEW TRIP MODAL \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 function NewTripModal({ onClose, onCreate }) {
   const [form, setForm] = useState({title:"",country:"",flag:"",startDate:"",endDate:"",currency:"KRW",gradient:GRADIENTS[0]});
   const valid = form.title && form.startDate && form.endDate && new Date(form.endDate)>=new Date(form.startDate);
@@ -817,7 +819,7 @@ function NewTripModal({ onClose, onCreate }) {
   const handleCountry = v => { const af=guessFlag(v); setForm({...form,country:v,flag:af||form.flag}); };
   const create = () => {
     if (!valid) return;
-    onCreate({id:uid(),...form,flag:form.flag||"??,days:dateRange(form.startDate,form.endDate).map(date=>({date,waypoints:[newWaypoint()],diary:"",photos:[],expenses:[]}))});
+    onCreate({id:uid(),...form,flag:form.flag||"\u2708",days:dateRange(form.startDate,form.endDate).map(date=>({date,waypoints:[newWaypoint()],diary:"",photos:[],expenses:[]}))});
   };
 
   return (
@@ -828,50 +830,50 @@ function NewTripModal({ onClose, onCreate }) {
           <div style={{width:40,height:4,borderRadius:2,background:"#E2E8F0"}}/>
         </div>
         <div style={{padding:"14px 22px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:700,color:"#1A202C"}}>???ы뻾 ?쒖옉?섍린</div>
-          <button style={{...S.iconBtn,background:"transparent",border:"none"}} onClick={onClose}>??/button>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:700,color:"#1A202C"}}>\uC0C8 \uC5EC\uD589 \uC2DC\uC791\uD558\uAE30</div>
+          <button style={{...S.iconBtn,background:"transparent",border:"none"}} onClick={onClose}>\u2715</button>
         </div>
         <div style={{padding:"8px 22px 0",overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:14}}>
           <div>
-            <label style={S.label}>?ы뻾 ?쒕ぉ *</label>
-            <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="?꾩퓙 踰싰퐙 ?ы뻾 2025"/>
+            <label style={S.label}>\uC5EC\uD589 \uC81C\uBAA9 *</label>
+            <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="\uB3C4\uCFC4 \uBC9A\uAF43 \uC5EC\uD589 2025"/>
           </div>
           <div style={{display:"flex",gap:12}}>
             <div style={{flex:1}}>
               <label style={S.label}>
-                援??
-                {guessFlag(form.country) && <span style={{color:"#48BB78",fontSize:10,marginLeft:5}}>?먮룞 {guessFlag(form.country)}</span>}
+                \uAD6D\uAC00
+                {guessFlag(form.country) && <span style={{color:"#48BB78",fontSize:10,marginLeft:5}}>\uC790\uB3D9 {guessFlag(form.country)}</span>}
               </label>
-              <input value={form.country} onChange={e=>handleCountry(e.target.value)} placeholder="?쇰낯, Japan, Thailand..."/>
+              <input value={form.country} onChange={e=>handleCountry(e.target.value)} placeholder="\uC77C\uBCF8, Japan, Thailand..."/>
             </div>
             <div style={{width:76}}>
-              <label style={S.label}>援?린</label>
-              <input value={form.flag} onChange={e=>setForm({...form,flag:e.target.value})} style={{textAlign:"center",fontSize:22,padding:"8px 4px"}} placeholder="?눓?눝"/>
+              <label style={S.label}>\uAD6D\uAE30</label>
+              <input value={form.flag} onChange={e=>setForm({...form,flag:e.target.value})} style={{textAlign:"center",fontSize:22,padding:"8px 4px"}} placeholder="\uD83C\uDDEF\uD83C\uDDF5"/>
             </div>
           </div>
           <div style={{display:"flex",gap:12}}>
-            <div style={{flex:1}}><label style={S.label}>?쒖옉??*</label><input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></div>
-            <div style={{flex:1}}><label style={S.label}>醫낅즺??*</label><input type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/></div>
+            <div style={{flex:1}}><label style={S.label}>\uC2DC\uC791\uC77C *</label><input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></div>
+            <div style={{flex:1}}><label style={S.label}>\uC885\uB8CC\uC77C *</label><input type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/></div>
           </div>
-          {dc>0 && <div style={{fontSize:12,color:"#8A6B3E",fontWeight:600,textAlign:"right",marginTop:-6}}>??{dc}???ы뻾</div>}
+          {dc>0 && <div style={{fontSize:12,color:"#8A6B3E",fontWeight:600,textAlign:"right",marginTop:-6}}>\u2726 {dc}\uC77C \uC5EC\uD589</div>}
           <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-            <div style={{flex:1}}><label style={S.label}>湲곕낯 ?듯솕</label><select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+            <div style={{flex:1}}><label style={S.label}>\uAE30\uBCF8 \uD1B5\uD654</label><select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})}>{CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
             <div style={{flex:2}}>
-              <label style={S.label}>?뚮쭏 ?됱긽</label>
+              <label style={S.label}>\uD14C\uB9C8 \uC0C9\uC0C1</label>
               <div style={{display:"flex",gap:8,marginTop:6}}>{GRADIENTS.map((g,i)=><div key={i} style={{width:36,height:36,borderRadius:10,background:g,cursor:"pointer",border:form.gradient===g?"3px solid #8A6B3E":"3px solid transparent",transition:"border .12s"}} onClick={()=>setForm({...form,gradient:g})}/>)}</div>
             </div>
           </div>
         </div>
         <div style={{padding:"16px 22px 28px",display:"flex",gap:10,borderTop:"1px solid #F0EDE8",marginTop:14}}>
-          <button style={{flex:1,padding:"14px",borderRadius:13,border:"none",background:"#F3F0EB",color:"#6B7280",fontWeight:600,fontSize:15,cursor:"pointer"}} onClick={onClose}>痍⑥냼</button>
-          <button style={{flex:2,...S.btnPrimary,padding:"14px",borderRadius:13,fontSize:15,opacity:valid?1:.45,cursor:valid?"pointer":"not-allowed"}} className={valid?"tbtn":""} onClick={create}>?ы뻾 留뚮뱾湲???/button>
+          <button style={{flex:1,padding:"14px",borderRadius:13,border:"none",background:"#F3F0EB",color:"#6B7280",fontWeight:600,fontSize:15,cursor:"pointer"}} onClick={onClose}>\uCDE8\uC18C</button>
+          <button style={{flex:2,...S.btnPrimary,padding:"14px",borderRadius:13,fontSize:15,opacity:valid?1:.45,cursor:valid?"pointer":"not-allowed"}} className={valid?"tbtn":""} onClick={create}>\uC5EC\uD589 \uB9CC\uB4E4\uAE30 \u2726</button>
         </div>
       </div>
     </div>
   );
 }
 
-/* ?? Styles ???????????????????????????????????????????????????????????????? */
+/* \u2500\u2500 Styles \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 const S = {
   btnPrimary: {background:"linear-gradient(135deg,#B8935A,#8A6B3E)",color:"#FFF",border:"none",borderRadius:13,padding:"12px 22px",fontWeight:700,fontSize:15,boxShadow:"0 6px 18px rgba(138,107,62,.28)",cursor:"pointer"},
   glassBtn:   {background:"rgba(255,255,255,.22)",backdropFilter:"blur(14px)",border:"1px solid rgba(255,255,255,.38)",color:"#FFF",borderRadius:11,padding:"8px 15px",fontWeight:600,fontSize:13,cursor:"pointer"},

@@ -30,12 +30,12 @@ const safeStr   = v => typeof v === "string" ? v : "";
 /* ?? Constants ????????????????????????????????????????????????????????????? */
 const CURRENCIES = ["KRW","USD","EUR","JPY","GBP","CNY","THB","VND","SGD","AUD","TWD","HKD"];
 const EXP_CATS = [
-  {id:"food",       label:"?앸퉬",   icon:"?뜙", color:"#F6AD55"},
-  {id:"transport",  label:"援먰넻",   icon:"?쉶", color:"#76E4F7"},
-  {id:"lodging",    label:"?숇컯",   icon:"?룳", color:"#90CDF4"},
-  {id:"sightseeing",label:"愿愿?,   icon:"?렚", color:"#9AE6B4"},
-  {id:"shopping",   label:"?쇳븨",   icon:"?썚", color:"#FBD38D"},
-  {id:"other",      label:"湲고?",   icon:"?뮩", color:"#D6BCFA"},
+  {id:"food",       label:"?앸퉬",   icon:"\uD83C\uDF5C", color:"#F6AD55"},
+  {id:"transport",  label:"援먰넻",   icon:"\uD83D\uDE8C", color:"#76E4F7"},
+  {id:"lodging",    label:"?숇컯",   icon:"\uD83C\uDFE8", color:"#90CDF4"},
+  {id:"sightseeing",label:"愿愿?,   icon:"\uD83C\uDFAD", color:"#9AE6B4"},
+  {id:"shopping",   label:"?쇳븨",   icon:"\uD83D\uDECD", color:"#FBD38D"},
+  {id:"other",      label:"湲고?",   icon:"\uD83D\uDCB3", color:"#D6BCFA"},
 ];
 const PAYMENT_METHODS = [
   {id:"card",   label:"?좎슜移대뱶"},
@@ -43,17 +43,17 @@ const PAYMENT_METHODS = [
   {id:"travel", label:"?몃옒釉붿껜?ъ뭅??},
 ];
 const TRANSPORT_MODES = [
-  {id:"transit",  label:"?以묎탳??, icon:"?쉯", maps:"transit"},
-  {id:"subway",   label:"?꾩쿋",     icon:"?쉩", maps:"transit"},
-  {id:"bus",      label:"踰꾩뒪",     icon:"?쉶", maps:"transit"},
-  {id:"taxi",     label:"?앹떆",     icon:"?슃", maps:"driving"},
-  {id:"walking",  label:"?꾨낫",     icon:"?슯", maps:"walking"},
-  {id:"driving",  label:"?먮룞李?,   icon:"?슅", maps:"driving"},
-  {id:"rental",   label:"?뚰듃移?,   icon:"?슇", maps:"driving"},
-  {id:"bicycle",  label:"?먯쟾嫄?,   icon:"?슩", maps:"bicycling"},
-  {id:"train",    label:"湲곗감",     icon:"?쉪", maps:"transit"},
-  {id:"flight",   label:"??났",     icon:"??,       maps:null},
-  {id:"boat",     label:"?좊컯",     icon:"??,       maps:"transit"},
+  {id:"transit",  label:"?以묎탳??, icon:"\uD83D\uDE87", maps:"transit"},
+  {id:"subway",   label:"?꾩쿋",     icon:"\uD83D\uDE83", maps:"transit"},
+  {id:"bus",      label:"踰꾩뒪",     icon:"\uD83D\uDE8C", maps:"transit"},
+  {id:"taxi",     label:"?앹떆",     icon:"\uD83D\uDE95", maps:"driving"},
+  {id:"walking",  label:"?꾨낫",     icon:"\uD83D\uDEB6", maps:"walking"},
+  {id:"driving",  label:"?먮룞李?,   icon:"\uD83D\uDE97", maps:"driving"},
+  {id:"rental",   label:"?뚰듃移?,   icon:"\uD83D\uDE99", maps:"driving"},
+  {id:"bicycle",  label:"?먯쟾嫄?,   icon:"\uD83D\uDEB2", maps:"bicycling"},
+  {id:"train",    label:"湲곗감",     icon:"\uD83D\uDE84", maps:"transit"},
+  {id:"flight",   label:"??났",     icon:"\u2708",       maps:null},
+  {id:"boat",     label:"?좊컯",     icon:"\u26F4",       maps:"transit"},
 ];
 const DURATION_OPTIONS = [
   {value:"",      label:"?뚯슂?쒓컙"},
@@ -110,15 +110,15 @@ const getPlaceNames = d => getWaypoints(d).map(w=>w.name).filter(Boolean);
 /* ?? Place icon helper (for fallback API results) ?????????????????????????? */
 function placeIcon(type="") {
   const t = type.toLowerCase();
-  if (["hotel","hostel","guest_house","motel","resort","ryokan","inn","lodge","accommodation"].some(x=>t.includes(x))) return "?룳";
-  if (["restaurant","cafe","fast_food","bar","pub","izakaya","ramen","sushi","food","eatery","bistro","diner"].some(x=>t.includes(x))) return "?띂";
-  if (["museum","attraction","viewpoint","monument","castle","temple","shrine","cathedral","church","ruins","gallery"].some(x=>t.includes(x))) return "?룢";
-  if (["station","subway","tram","bus_stop","bus_station","airport","aerodrome","terminal"].some(x=>t.includes(x))) return "?쉲";
-  if (["park","garden","forest","nature"].some(x=>t.includes(x))) return "?뙼";
-  if (["beach","bay","coast","sea"].some(x=>t.includes(x))) return "?룚";
-  if (["mall","shop","market","shopping"].some(x=>t.includes(x))) return "?썚";
-  if (["hospital","clinic","pharmacy"].some(x=>t.includes(x))) return "?룯";
-  return "?뱧";
+  if (["hotel","hostel","guest_house","motel","resort","ryokan","inn","lodge","accommodation"].some(x=>t.includes(x))) return "\uD83C\uDFE8";
+  if (["restaurant","cafe","fast_food","bar","pub","izakaya","ramen","sushi","food","eatery","bistro","diner"].some(x=>t.includes(x))) return "\uD83C\uDF7D";
+  if (["museum","attraction","viewpoint","monument","castle","temple","shrine","cathedral","church","ruins","gallery"].some(x=>t.includes(x))) return "\uD83C\uDFDB";
+  if (["station","subway","tram","bus_stop","bus_station","airport","aerodrome","terminal"].some(x=>t.includes(x))) return "\uD83D\uDE49";
+  if (["park","garden","forest","nature"].some(x=>t.includes(x))) return "\uD83C\uDF3F";
+  if (["beach","bay","coast","sea"].some(x=>t.includes(x))) return "\uD83C\uDFD6";
+  if (["mall","shop","market","shopping"].some(x=>t.includes(x))) return "\uD83D\uDECD";
+  if (["hospital","clinic","pharmacy"].some(x=>t.includes(x))) return "\uD83C\uDFE5";
+  return "\uD83D\uDCCD";
 }
 
 /* ?? fetchPlaces: /api/places ?쒕쾭由ъ뒪 ?⑥닔 ?몄텧 ??????????????????????????? */

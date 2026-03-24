@@ -445,51 +445,148 @@ function CompactTransport({ value, duration, onTransport, onDuration }) {
   );
 }
 
-/* -- RouteTimeline: \uC800\uC7A5\uB41C \uB3D9\uC120\uC744 \uC77C\uC9C1\uC120 \uC77C\uB7EC\uC2A4\uD2B8\uB85C \uD45C\uC2DC ------------------- */
-function RouteTimeline({ waypoints }) {
+/* -- RouteTimeline: S\uc790 \uc9c0\uadf8\uc7ad \ub808\uc774\uc544\uc6c3 + JPG \uc800\uc7a5 ------------ */
+const ITEMS_PER_ROW = 3; // \ud55c \uc904\uc5d0 \ud45c\uc2dc\ud560 \uc7a5\uc18c \uc218
+
+function RouteTimeline({ waypoints, showSave }) {
   const wps = waypoints.filter(w=>w.name);
+  const exportRef = useRef();
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveJpg = async () => {
+    if (!exportRef.current) return;
+    setSaving(true);
+    try {
+      // html2canvas CDN \ub85c\ub4dc
+      if (!window.html2canvas) {
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      const canvas = await window.html2canvas(exportRef.current, {
+        backgroundColor: "#FFFDF7",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      link.download = "wanderlog-route.jpg";
+      link.href = canvas.toDataURL("image/jpeg", 0.92);
+      link.click();
+    } catch(e) { alert("\uC800\uC7A5 \uC2E4\uD328: " + e.message); }
+    finally { setSaving(false); }
+  };
+
   if (wps.length === 0) return null;
-  if (wps.length === 1) return (
-    <div style={{display:"flex",alignItems:"center",gap:6,padding:"10px 0 2px",overflowX:"auto"}}>
-      <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-        <div style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#A88653,#8A6B3E)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,boxShadow:"0 2px 8px rgba(138,107,62,.3)"}}>{wps[0].icon||"\uD83D\uDCCD"}</div>
-        <div>
-          <div style={{fontSize:12,fontWeight:700,color:"#1A202C",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{wps[0].name}</div>
-          {wps[0].time && <div style={{fontSize:10,color:"#C8A97E",fontWeight:600}}>{wps[0].time}</div>}
-        </div>
-      </div>
-    </div>
-  );
+
+  // \ud589 \ubd84\ud560: ITEMS_PER_ROW \uac1c\uc529 \uc790\ub978\ub2e4
+  const rows = [];
+  for (let i = 0; i < wps.length; i += ITEMS_PER_ROW) {
+    rows.push(wps.slice(i, i + ITEMS_PER_ROW));
+  }
 
   return (
-    <div style={{display:"flex",alignItems:"center",gap:0,padding:"10px 0 2px",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
-      {wps.map((wp, i) => {
-        const nextWp = wps[i+1];
-        const transport = TRANSPORT_MODES.find(m=>m.id===(wp.transport||"transit"));
-        return (
-          <div key={wp.id||i} style={{display:"flex",alignItems:"center",gap:0,flexShrink:0}}>
-            {/* \uC7A5\uC18C */}
-            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,minWidth:60,maxWidth:80}}>
-              <div style={{width:32,height:32,borderRadius:"50%",background:i===0?"linear-gradient(135deg,#A88653,#8A6B3E)":i===wps.length-1?"linear-gradient(135deg,#667eea,#764ba2)":"#FFF",border:i===0||i===wps.length-1?"none":"2px solid #C8A97E",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 3px 10px rgba(0,0,0,.12)",flexShrink:0}}>
-                {wp.icon||"\uD83D\uDCCD"}
+    <div>
+      {/* JPG \uc800\uc7a5 \ubc84\ud2bc */}
+      {showSave && (
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+          <button onClick={handleSaveJpg} disabled={saving}
+            style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 13px",borderRadius:20,border:"1.5px solid #C8A97E",background:"#FFFBF5",color:"#8A6B3E",fontSize:12,fontWeight:600,cursor:"pointer",opacity:saving?0.6:1}}>
+            {saving ? "\uC800\uC7A5\uC911..." : "\uD83D\uDDBC JPG \uC800\uC7A5"}
+          </button>
+        </div>
+      )}
+
+      {/* S\uc790 \ud0c0\uc784\ub77c\uc778 */}
+      <div ref={exportRef} style={{background:"#FFFDF7",borderRadius:16,padding:"16px 12px 12px",border:"1px solid #F0EDE8"}}>
+        {rows.map((row, rowIdx) => {
+          const isEven = rowIdx % 2 === 0; // \uc9dd\uc218\ud589: \uc67c\uc640\uc624\ub978, \ud640\uc218\ud589: \uc624\ub978\uc640\uc67c
+          const displayRow = isEven ? row : [...row].reverse();
+          // \uc6d0\ub798 \uc778\ub371\uc2a4 (\uc5f0\uacb0\uc120 \ubc29\ud5a5\uc5d0 \uc4f0\uae30 \uc704\ud574)
+          const startIdx = rowIdx * ITEMS_PER_ROW;
+
+          return (
+            <div key={rowIdx}>
+              {/* \uc7a5\uc18c \ud589 */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                {displayRow.map((wp, colIdx) => {
+                  const realIdx = isEven ? startIdx + colIdx : startIdx + (row.length - 1 - colIdx);
+                  const isFirst = realIdx === 0;
+                  const isLast  = realIdx === wps.length - 1;
+                  const transport = TRANSPORT_MODES.find(m => m.id === (wp.transport || "transit"));
+                  // \uc624\ub978\ucabd \uc5f0\uacb0\uc120 (\ub9c8\uc9c0\ub9c9 \ucee8\ub2e4 \uc81c\uc678)
+                  const showRight = colIdx < displayRow.length - 1;
+                  // \uc5f0\uacb0\uc120\uc758 \uc6d0\ub798 \uc778\ub371\uc2a4 \ubc29\ud5a5
+                  const nextRealIdx = isEven ? realIdx + 1 : realIdx - 1;
+                  const connWp = wps[isEven ? realIdx : realIdx - 1]; // \uc774\ub3d9\uc218\ub2e8\uc740 \uc55e \uc0ac\ub78c \uae30\uc900
+
+                  return (
+                    <div key={wp.id||realIdx} style={{display:"flex",alignItems:"center",flex:1}}>
+                      {/* \uc7a5\uc18c \ub178\ub4dc */}
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1}}>
+                        <div style={{
+                          width:36,height:36,borderRadius:"50%",
+                          background: isFirst ? "linear-gradient(135deg,#A88653,#8A6B3E)" : isLast ? "linear-gradient(135deg,#667eea,#764ba2)" : "#FFF",
+                          border: isFirst||isLast ? "none" : "2px solid #C8A97E",
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          fontSize:18,boxShadow:"0 3px 10px rgba(0,0,0,.10)",flexShrink:0
+                        }}>{wp.icon||"\uD83D\uDCCD"}</div>
+                        <div style={{textAlign:"center",maxWidth:72}}>
+                          <div style={{fontSize:11,fontWeight:700,color:"#1A202C",lineHeight:1.25,wordBreak:"keep-all"}}>{wp.name}</div>
+                          {wp.time && <div style={{fontSize:10,color:"#C8A97E",fontWeight:700,marginTop:2}}>{wp.time}</div>}
+                        </div>
+                      </div>
+                      {/* \uc624\ub978\ucabd \uc5f0\uacb0\uc120 */}
+                      {showRight && (
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:48,flexShrink:0,gap:2}}>
+                          <span style={{fontSize:14}}>{isEven ? (TRANSPORT_MODES.find(m=>m.id===(wps[realIdx]?.transport||"transit"))?.icon||"\uD83D\uDE8C") : (TRANSPORT_MODES.find(m=>m.id===(wps[realIdx-1]?.transport||"transit"))?.icon||"\uD83D\uDE8C")}</span>
+                          {(isEven ? wps[realIdx]?.duration : wps[realIdx-1]?.duration) && (
+                            <div style={{fontSize:9,color:"#8A6B3E",background:"#FFF5EB",padding:"1px 5px",borderRadius:6,border:"1px solid #F6D48A",whiteSpace:"nowrap"}}>
+                              {isEven ? wps[realIdx]?.duration : wps[realIdx-1]?.duration}
+                            </div>
+                          )}
+                          <div style={{width:36,height:2,background:"linear-gradient(to right,#C8A97E80,#C8A97E)",borderRadius:1}}/>
+                          <div style={{width:0,height:0,borderTop:"3px solid transparent",borderBottom:"3px solid transparent",...(isEven?{borderLeft:"6px solid #C8A97E"}:{borderRight:"6px solid #C8A97E"})}}/>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <div style={{textAlign:"center"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#1A202C",maxWidth:76,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.2}}>{wp.name}</div>
-                {wp.time && <div style={{fontSize:10,color:"#C8A97E",fontWeight:600,marginTop:1}}>{wp.time}</div>}
-              </div>
+
+              {/* \uc544\ub798\ub85c \uc5f0\uacb0\ud558\ub294 \ucf24 (\ud589\uacfc \ud589 \uc0ac\uc774) */}
+              {rowIdx < rows.length - 1 && (
+                <div style={{display:"flex",justifyContent: isEven ? "flex-end" : "flex-start",padding:"2px 18px",position:"relative",height:40}}>
+                  {/* \uc218\uc9c1 \uc120 */}
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:48,gap:2}}>
+                    {/* \ub2e4\uc74c \ud589 \uccab \uc7a5\uc18c \uc774\ub3d9\uc218\ub2e8 */}
+                    {(() => {
+                      const lastOfRow = rows[rowIdx][rows[rowIdx].length-1];
+                      const t = TRANSPORT_MODES.find(m=>m.id===(lastOfRow?.transport||"transit"));
+                      return <span style={{fontSize:13}}>{t?.icon||"\uD83D\uDE8C"}</span>;
+                    })()}
+                    {rows[rowIdx][rows[rowIdx].length-1]?.duration && (
+                      <div style={{fontSize:9,color:"#8A6B3E",background:"#FFF5EB",padding:"1px 5px",borderRadius:6,border:"1px solid #F6D48A",whiteSpace:"nowrap"}}>
+                        {rows[rowIdx][rows[rowIdx].length-1]?.duration}
+                      </div>
+                    )}
+                    <div style={{width:2,height:12,background:"linear-gradient(to bottom,#C8A97E,#C8A97E80)",borderRadius:1}}/>
+                    <div style={{width:0,height:0,borderLeft:"3px solid transparent",borderRight:"3px solid transparent",borderTop:"6px solid #C8A97E"}}/>
+                  </div>
+                </div>
+              )}
             </div>
-            {/* \uC5F0\uACB0\uC120 + \uC774\uB3D9\uC218\uB2E8 */}
-            {i < wps.length-1 && (
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0 4px",flexShrink:0,minWidth:64}}>
-                <div style={{fontSize:16,marginBottom:2}}>{transport?.icon||"\uD83D\uDE8C"}</div>
-                {wp.duration && <div style={{fontSize:9.5,color:"#8A6B3E",fontWeight:600,background:"#FFF5EB",padding:"1px 6px",borderRadius:8,border:"1px solid #F6D48A",whiteSpace:"nowrap"}}>{wp.duration}</div>}
-                <div style={{width:"100%",height:2,background:"linear-gradient(to right,#C8A97E,#E2D5C0)",borderRadius:1,marginTop:3}}/>
-                <div style={{width:0,height:0,borderTop:"4px solid transparent",borderBottom:"4px solid transparent",borderLeft:"7px solid #C8A97E",marginTop:-3}}/>
-              </div>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+
+        {/* \ubc14\ub2e5 \uBE0C\ub79c\ub4dc\uba85 */}
+        {showSave && (
+          <div style={{textAlign:"center",marginTop:10,fontSize:10,color:"#C8A97E80",letterSpacing:1.5,fontFamily:"'Cormorant Garamond',serif"}}>WANDERLOG</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -960,6 +1057,12 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
         <div style={S.secBox}>
           <div style={S.secTitle}>{"\uD83D\uDCCD"} {"\uC77C\uC815"} & {"\uB3D9\uC120"}</div>
           <WaypointsEditor waypoints={wps} onChange={setWps}/>
+          {wps.filter(w=>w.name).length > 0 && (
+            <div style={{marginTop:16,borderTop:"1px dashed #F0EDE8",paddingTop:14}}>
+              <div style={{fontSize:11,color:"#B0BEC5",fontWeight:600,letterSpacing:.8,marginBottom:8}}>{"\uB3D9\uC120"} {"\uBBF8\uB9AC\uBCF4\uAE30"}</div>
+              <RouteTimeline waypoints={wps} showSave={true}/>
+            </div>
+          )}
         </div>
 
         {/* Expenses */}

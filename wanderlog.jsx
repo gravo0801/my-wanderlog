@@ -446,7 +446,9 @@ function CompactTransport({ value, duration, onTransport, onDuration }) {
 }
 
 /* -- RouteTimeline: S\uc790 \uc9c0\uadf8\uc7ad \ub808\uc774\uc544\uc6c3 + JPG \uc800\uc7a5 ------------ */
-const ITEMS_PER_ROW = 3; // \ud55c \uc904\uc5d0 \ud45c\uc2dc\ud560 \uc7a5\uc18c \uc218
+const ITEMS_PER_ROW = 3;
+const NODE_W = 72;   // \uc7a5\uc18c \ub178\ub4dc \ub108\ube44 (px)
+const CONN_W = 44;   // \uc5f0\uacb0\uc120 \ub108\ube44 (px)
 
 function RouteTimeline({ waypoints, showSave }) {
   const wps = waypoints.filter(w=>w.name);
@@ -457,7 +459,6 @@ function RouteTimeline({ waypoints, showSave }) {
     if (!exportRef.current) return;
     setSaving(true);
     try {
-      // html2canvas CDN \ub85c\ub4dc
       if (!window.html2canvas) {
         await new Promise((res, rej) => {
           const s = document.createElement("script");
@@ -467,10 +468,7 @@ function RouteTimeline({ waypoints, showSave }) {
         });
       }
       const canvas = await window.html2canvas(exportRef.current, {
-        backgroundColor: "#FFFDF7",
-        scale: 2,
-        useCORS: true,
-        logging: false,
+        backgroundColor: "#FFFDF7", scale: 2, useCORS: true, logging: false,
       });
       const link = document.createElement("a");
       link.download = "wanderlog-route.jpg";
@@ -482,109 +480,100 @@ function RouteTimeline({ waypoints, showSave }) {
 
   if (wps.length === 0) return null;
 
-  // \ud589 \ubd84\ud560: ITEMS_PER_ROW \uac1c\uc529 \uc790\ub978\ub2e4
   const rows = [];
   for (let i = 0; i < wps.length; i += ITEMS_PER_ROW) {
     rows.push(wps.slice(i, i + ITEMS_PER_ROW));
   }
 
+  // \ub178\ub4dc + \ucee4\ub125\ud130 \ub108\ube44 \ud569\uc0b0\uc73c\ub85c \uc804\uccb4 \ub108\ube44 \uacc4\uc0b0
+  const totalW = ITEMS_PER_ROW * NODE_W + (ITEMS_PER_ROW - 1) * CONN_W;
+
   return (
     <div>
-      {/* JPG \uc800\uc7a5 \ubc84\ud2bc */}
       {showSave && (
         <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
           <button onClick={handleSaveJpg} disabled={saving}
-            style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 13px",borderRadius:20,border:"1.5px solid #C8A97E",background:"#FFFBF5",color:"#8A6B3E",fontSize:12,fontWeight:600,cursor:"pointer",opacity:saving?0.6:1}}>
+            style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 12px",borderRadius:20,border:"1.5px solid #C8A97E",background:"#FFFBF5",color:"#8A6B3E",fontSize:11,fontWeight:600,cursor:"pointer",opacity:saving?0.6:1}}>
             {saving ? "\uC800\uC7A5\uC911..." : "\uD83D\uDDBC JPG \uC800\uC7A5"}
           </button>
         </div>
       )}
 
-      {/* S\uc790 \ud0c0\uc784\ub77c\uc778 */}
-      <div ref={exportRef} style={{background:"#FFFDF7",borderRadius:16,padding:"16px 12px 12px",border:"1px solid #F0EDE8"}}>
-        {rows.map((row, rowIdx) => {
-          const isEven = rowIdx % 2 === 0; // \uc9dd\uc218\ud589: \uc67c\uc640\uc624\ub978, \ud640\uc218\ud589: \uc624\ub978\uc640\uc67c
-          const displayRow = isEven ? row : [...row].reverse();
-          // \uc6d0\ub798 \uc778\ub371\uc2a4 (\uc5f0\uacb0\uc120 \ubc29\ud5a5\uc5d0 \uc4f0\uae30 \uc704\ud574)
-          const startIdx = rowIdx * ITEMS_PER_ROW;
+      <div ref={exportRef} style={{background:"#FFFDF7",borderRadius:14,padding:"14px 12px 10px",border:"1px solid #F0EDE8",display:"inline-block",minWidth:"100%"}}>
+        <div style={{width:totalW,margin:"0 auto"}}>
+          {rows.map((row, rowIdx) => {
+            const isEven = rowIdx % 2 === 0;
+            const displayRow = isEven ? row : [...row].reverse();
+            const startIdx = rowIdx * ITEMS_PER_ROW;
 
-          return (
-            <div key={rowIdx}>
-              {/* \uc7a5\uc18c \ud589 */}
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                {displayRow.map((wp, colIdx) => {
-                  const realIdx = isEven ? startIdx + colIdx : startIdx + (row.length - 1 - colIdx);
-                  const isFirst = realIdx === 0;
-                  const isLast  = realIdx === wps.length - 1;
-                  const transport = TRANSPORT_MODES.find(m => m.id === (wp.transport || "transit"));
-                  // \uc624\ub978\ucabd \uc5f0\uacb0\uc120 (\ub9c8\uc9c0\ub9c9 \ucee8\ub2e4 \uc81c\uc678)
-                  const showRight = colIdx < displayRow.length - 1;
-                  // \uc5f0\uacb0\uc120\uc758 \uc6d0\ub798 \uc778\ub371\uc2a4 \ubc29\ud5a5
-                  const nextRealIdx = isEven ? realIdx + 1 : realIdx - 1;
-                  const connWp = wps[isEven ? realIdx : realIdx - 1]; // \uc774\ub3d9\uc218\ub2e8\uc740 \uc55e \uc0ac\ub78c \uae30\uc900
+            return (
+              <div key={rowIdx}>
+                {/* \uc7a5\uc18c \ud589 */}
+                <div style={{display:"flex",alignItems:"center"}}>
+                  {displayRow.map((wp, colIdx) => {
+                    const realIdx = isEven ? startIdx + colIdx : startIdx + (row.length - 1 - colIdx);
+                    const isFirst = realIdx === 0;
+                    const isLast  = realIdx === wps.length - 1;
+                    const showRight = colIdx < displayRow.length - 1;
+                    const connSrc = isEven ? wps[realIdx] : wps[realIdx - 1];
 
-                  return (
-                    <div key={wp.id||realIdx} style={{display:"flex",alignItems:"center",flex:1}}>
-                      {/* \uc7a5\uc18c \ub178\ub4dc */}
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1}}>
-                        <div style={{
-                          width:36,height:36,borderRadius:"50%",
-                          background: isFirst ? "linear-gradient(135deg,#A88653,#8A6B3E)" : isLast ? "linear-gradient(135deg,#667eea,#764ba2)" : "#FFF",
-                          border: isFirst||isLast ? "none" : "2px solid #C8A97E",
-                          display:"flex",alignItems:"center",justifyContent:"center",
-                          fontSize:18,boxShadow:"0 3px 10px rgba(0,0,0,.10)",flexShrink:0
-                        }}>{wp.icon||"\uD83D\uDCCD"}</div>
-                        <div style={{textAlign:"center",maxWidth:72}}>
-                          <div style={{fontSize:11,fontWeight:700,color:"#1A202C",lineHeight:1.25,wordBreak:"keep-all"}}>{wp.name}</div>
-                          {wp.time && <div style={{fontSize:10,color:"#C8A97E",fontWeight:700,marginTop:2}}>{wp.time}</div>}
+                    return (
+                      <div key={wp.id||realIdx} style={{display:"flex",alignItems:"center"}}>
+                        {/* \uc7a5\uc18c \ub178\ub4dc */}
+                        <div style={{width:NODE_W,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                          <div style={{
+                            width:32,height:32,borderRadius:"50%",
+                            background: isFirst?"linear-gradient(135deg,#A88653,#8A6B3E)":isLast?"linear-gradient(135deg,#667eea,#764ba2)":"#FFF",
+                            border: isFirst||isLast?"none":"2px solid #C8A97E",
+                            display:"flex",alignItems:"center",justifyContent:"center",
+                            fontSize:16,boxShadow:"0 2px 8px rgba(0,0,0,.10)",flexShrink:0,
+                          }}>{wp.icon||"\uD83D\uDCCD"}</div>
+                          <div style={{textAlign:"center",width:NODE_W}}>
+                            <div style={{fontSize:10,fontWeight:700,color:"#1A202C",lineHeight:1.3,wordBreak:"keep-all",padding:"0 2px"}}>{wp.name}</div>
+                            {wp.time && <div style={{fontSize:9.5,color:"#C8A97E",fontWeight:700,marginTop:1}}>{wp.time}</div>}
+                          </div>
                         </div>
+                        {/* \uc5f0\uacb0\uc120 */}
+                        {showRight && (
+                          <div style={{width:CONN_W,display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
+                            <span style={{fontSize:13,lineHeight:1}}>{connSrc ? (TRANSPORT_MODES.find(m=>m.id===(connSrc.transport||"transit"))?.icon||"\uD83D\uDE8C") : "\uD83D\uDE8C"}</span>
+                            {connSrc?.duration && (
+                              <div style={{fontSize:8.5,color:"#8A6B3E",background:"#FFF5EB",padding:"1px 4px",borderRadius:5,border:"1px solid #F6D48A",whiteSpace:"nowrap"}}>
+                                {connSrc.duration}
+                              </div>
+                            )}
+                            <div style={{width:CONN_W-8,height:1.5,background:"linear-gradient(to right,#C8A97E60,#C8A97E)",borderRadius:1}}/>
+                            <div style={{width:0,height:0,borderTop:"3px solid transparent",borderBottom:"3px solid transparent",...(isEven?{borderLeft:"5px solid #C8A97E"}:{borderRight:"5px solid #C8A97E"})}}/>
+                          </div>
+                        )}
                       </div>
-                      {/* \uc624\ub978\ucabd \uc5f0\uacb0\uc120 */}
-                      {showRight && (
-                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:48,flexShrink:0,gap:2}}>
-                          <span style={{fontSize:14}}>{isEven ? (TRANSPORT_MODES.find(m=>m.id===(wps[realIdx]?.transport||"transit"))?.icon||"\uD83D\uDE8C") : (TRANSPORT_MODES.find(m=>m.id===(wps[realIdx-1]?.transport||"transit"))?.icon||"\uD83D\uDE8C")}</span>
-                          {(isEven ? wps[realIdx]?.duration : wps[realIdx-1]?.duration) && (
-                            <div style={{fontSize:9,color:"#8A6B3E",background:"#FFF5EB",padding:"1px 5px",borderRadius:6,border:"1px solid #F6D48A",whiteSpace:"nowrap"}}>
-                              {isEven ? wps[realIdx]?.duration : wps[realIdx-1]?.duration}
-                            </div>
-                          )}
-                          <div style={{width:36,height:2,background:"linear-gradient(to right,#C8A97E80,#C8A97E)",borderRadius:1}}/>
-                          <div style={{width:0,height:0,borderTop:"3px solid transparent",borderBottom:"3px solid transparent",...(isEven?{borderLeft:"6px solid #C8A97E"}:{borderRight:"6px solid #C8A97E"})}}/>
-                        </div>
-                      )}
+                    );
+                  })}
+                </div>
+
+                {/* \ud589 \uac04 \uc218\uc9c1 \ucf24 */}
+                {rowIdx < rows.length - 1 && (() => {
+                  const lastOfRow = rows[rowIdx][rows[rowIdx].length - 1];
+                  const t = TRANSPORT_MODES.find(m=>m.id===(lastOfRow?.transport||"transit"));
+                  return (
+                    <div style={{display:"flex",justifyContent:isEven?"flex-end":"flex-start",height:36,alignItems:"center",paddingRight:isEven?NODE_W/2-CONN_W/2:0,paddingLeft:isEven?0:NODE_W/2-CONN_W/2}}>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,width:NODE_W}}>
+                        <span style={{fontSize:12,lineHeight:1}}>{t?.icon||"\uD83D\uDE8C"}</span>
+                        {lastOfRow?.duration && (
+                          <div style={{fontSize:8.5,color:"#8A6B3E",background:"#FFF5EB",padding:"1px 4px",borderRadius:5,border:"1px solid #F6D48A",whiteSpace:"nowrap"}}>{lastOfRow.duration}</div>
+                        )}
+                        <div style={{width:1.5,height:12,background:"linear-gradient(to bottom,#C8A97E,#C8A97E60)",borderRadius:1}}/>
+                        <div style={{width:0,height:0,borderLeft:"3px solid transparent",borderRight:"3px solid transparent",borderTop:"5px solid #C8A97E"}}/>
+                      </div>
                     </div>
                   );
-                })}
+                })()}
               </div>
-
-              {/* \uc544\ub798\ub85c \uc5f0\uacb0\ud558\ub294 \ucf24 (\ud589\uacfc \ud589 \uc0ac\uc774) */}
-              {rowIdx < rows.length - 1 && (
-                <div style={{display:"flex",justifyContent: isEven ? "flex-end" : "flex-start",padding:"2px 18px",position:"relative",height:40}}>
-                  {/* \uc218\uc9c1 \uc120 */}
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:48,gap:2}}>
-                    {/* \ub2e4\uc74c \ud589 \uccab \uc7a5\uc18c \uc774\ub3d9\uc218\ub2e8 */}
-                    {(() => {
-                      const lastOfRow = rows[rowIdx][rows[rowIdx].length-1];
-                      const t = TRANSPORT_MODES.find(m=>m.id===(lastOfRow?.transport||"transit"));
-                      return <span style={{fontSize:13}}>{t?.icon||"\uD83D\uDE8C"}</span>;
-                    })()}
-                    {rows[rowIdx][rows[rowIdx].length-1]?.duration && (
-                      <div style={{fontSize:9,color:"#8A6B3E",background:"#FFF5EB",padding:"1px 5px",borderRadius:6,border:"1px solid #F6D48A",whiteSpace:"nowrap"}}>
-                        {rows[rowIdx][rows[rowIdx].length-1]?.duration}
-                      </div>
-                    )}
-                    <div style={{width:2,height:12,background:"linear-gradient(to bottom,#C8A97E,#C8A97E80)",borderRadius:1}}/>
-                    <div style={{width:0,height:0,borderLeft:"3px solid transparent",borderRight:"3px solid transparent",borderTop:"6px solid #C8A97E"}}/>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* \ubc14\ub2e5 \uBE0C\ub79c\ub4dc\uba85 */}
+            );
+          })}
+        </div>
         {showSave && (
-          <div style={{textAlign:"center",marginTop:10,fontSize:10,color:"#C8A97E80",letterSpacing:1.5,fontFamily:"'Cormorant Garamond',serif"}}>WANDERLOG</div>
+          <div style={{textAlign:"center",marginTop:8,fontSize:9,color:"#C8A97E60",letterSpacing:2,fontFamily:"'Cormorant Garamond',serif"}}>WANDERLOG</div>
         )}
       </div>
     </div>

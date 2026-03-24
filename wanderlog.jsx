@@ -598,7 +598,7 @@ function HomeScreen({ trips, stats, onSelect, onNew, syncCode, syncStatus, onSyn
             <button onClick={()=>setEditSync(p=>!p)}
               style={{background:"rgba(255,255,255,.15)",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,.25)",color:"#FFF",borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5,marginTop:4}}>
               <div style={{width:7,height:7,borderRadius:"50%",background:statusDot.bg,flexShrink:0}}/>
-              {syncCode ? syncCode : {"\uB3D9\uAE30\uD654"}}
+              {syncCode ? syncCode : "\uB3D9\uAE30\uD654"}
             </button>
           </div>
           <button style={{marginTop:20,background:"rgba(255,255,255,.15)",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,.3)",color:"#FFF",borderRadius:12,padding:"10px 20px",fontWeight:600,fontSize:14,cursor:"pointer"}} className="tbtn" onClick={onNew}>

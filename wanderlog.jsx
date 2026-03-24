@@ -646,7 +646,7 @@ function DayRow({ day, index, total, onClick }) {
               </div>
             ) : null;
           })()}
-          {day.diary && <div style={{fontSize:13,color:"#8A9BB0",lineHeight:1.6,background:"#FAFAFA",padding:"9px 11px",borderRadius:10,fontStyle:"italic",marginTop:4}}>&ldquo;{day.diary.slice(0,65)}{day.diary.length>65?"{"\u2026"}":""}&rdquo;</div>}
+          {day.diary && <div style={{fontSize:13,color:"#8A9BB0",lineHeight:1.6,background:"#FAFAFA",padding:"9px 11px",borderRadius:10,fontStyle:"italic",marginTop:4}}>&ldquo;{day.diary.slice(0,65)}{day.diary.length>65?"\u2026":""}&rdquo;</div>}
           {safeArr(day.photos).length>0 && (
             <div style={{display:"flex",gap:5,marginTop:10}}>
               {day.photos.slice(0,4).map((p,i)=><div key={i} style={{width:44,height:44,borderRadius:10,backgroundSize:"cover",backgroundPosition:"center",backgroundImage:`url(${p})`,border:"1px solid #EDE9E3"}}/>)}

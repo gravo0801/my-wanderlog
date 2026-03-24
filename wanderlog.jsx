@@ -1,22 +1,71 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { initializeApp, getApps } from "firebase/app";
+import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
 
-/* -- Storage --------------------------------------------------------------- */
-const STORAGE_KEY = "wl_trips";
-async function storageSave(trips) {
-  try {
-    if (window.storage) await window.storage.set(STORAGE_KEY, JSON.stringify(trips));
-    else localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
-  } catch (e) { console.warn("save:", e); }
+/* -- Firebase ---------------------------------------------------------------- */
+const FB_CONFIG = {
+  apiKey: "AIzaSyAR2K6zW3YVEZ7qDaY11kfkYYwdB_jq-fQ",
+  authDomain: "my-wanderlog.firebaseapp.com",
+  projectId: "my-wanderlog",
+  storageBucket: "my-wanderlog.firebasestorage.app",
+  messagingSenderId: "398985926766",
+  appId: "1:398985926766:web:07296b6007c552f74bae7f"
+};
+const fbApp = getApps().length ? getApps()[0] : initializeApp(FB_CONFIG);
+const db    = getFirestore(fbApp);
+
+const SYNC_KEY  = "wl_sync_code";
+const LOCAL_KEY = "wl_trips_local";
+
+const getSyncCode = ()    => { try { return localStorage.getItem(SYNC_KEY)||""; } catch { return ""; } };
+const setSyncCode = (c)   => { try { localStorage.setItem(SYNC_KEY, c); } catch {} };
+
+/* photos ?? ?? (?? ??) ? ?? ???? ?? */
+function stripPhotos(trips) {
+  return safeArr(trips).map(t => ({
+    ...t,
+    days: safeArr(t.days).map(d => ({...d, photos:[]}))
+  }));
 }
-async function storageLoad() {
+function mergePhotos(cloudTrips, localTrips) {
+  return safeArr(cloudTrips).map(ct => {
+    const lt = safeArr(localTrips).find(t => t.id === ct.id);
+    return {
+      ...ct,
+      days: safeArr(ct.days).map((cd, i) => {
+        const ld = safeArr(lt?.days)[i];
+        return {...cd, photos: safeArr(ld?.photos)};
+      })
+    };
+  });
+}
+
+/* ?? ?? ?? */
+function localSave(trips) {
+  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(trips)); } catch {}
+}
+function localLoad() {
+  try { const r = localStorage.getItem(LOCAL_KEY); return r ? JSON.parse(r) : []; } catch { return []; }
+}
+
+/* Firestore ?? */
+async function cloudSave(syncCode, trips) {
+  if (!syncCode) return;
   try {
-    if (window.storage) {
-      const r = await window.storage.get(STORAGE_KEY);
-      return r ? JSON.parse(r.value) : [];
-    }
-    const r = localStorage.getItem(STORAGE_KEY);
-    return r ? JSON.parse(r) : [];
-  } catch { return []; }
+    await setDoc(doc(db, "wanderlog", syncCode), {
+      trips: stripPhotos(trips),
+      updatedAt: Date.now()
+    });
+  } catch(e) { console.warn("cloud save:", e); }
+}
+
+/* Firestore ??? ?? */
+async function cloudLoad(syncCode) {
+  if (!syncCode) return null;
+  try {
+    const snap = await getDoc(doc(db, "wanderlog", syncCode));
+    return snap.exists() ? safeArr(snap.data().trips) : null;
+  } catch { return null; }
 }
 
 /* -- Utilities ------------------------------------------------------------- */
@@ -366,25 +415,82 @@ const W = {
    MAIN APP
 =========================================================================== */
 export default function WanderLog() {
-  const [trips,  setTrips] = useState([]);
-  const [loaded, setLoaded]= useState(false);
-  const [screen, setScreen]= useState("home");
-  const [selTrip,setST]    = useState(null);
-  const [selDay, setSD]    = useState(null);
-  const [modal,  setModal] = useState(false);
+  const [trips,     setTrips]  = useState([]);
+  const [loaded,    setLoaded] = useState(false);
+  const [screen,    setScreen] = useState("home");
+  const [selTrip,   setST]     = useState(null);
+  const [selDay,    setSD]     = useState(null);
+  const [modal,     setModal]  = useState(false);
+  const [syncCode,  setSyncCode_]= useState(getSyncCode);
+  const [syncStatus,setSyncSt] = useState("idle"); // idle | syncing | ok | error
+  const unsubRef = useRef(null);
+  const savingRef = useRef(false);
 
-  useEffect(()=>{storageLoad().then(d=>{setTrips(safeArr(d));setLoaded(true);});},[]);
-  useEffect(()=>{if(loaded)storageSave(trips);},[trips,loaded]);
+  /* --- \ucd08\uae30 \ub85c\ub4dc: \ub85c\ucef4 \uba3c\uc800 \ubcf4\uc5ec\uc900 \ud6c4 \ud074\ub77c\uc6b0\ub4dc \ubcd1\ud569 --- */
+  useEffect(() => {
+    const local = localLoad();
+    setTrips(local);
 
-  const updateTrip = t => {setTrips(p=>p.map(x=>x.id===t.id?t:x));setST(t);};
-  const deleteTrip = id => {setTrips(p=>p.filter(x=>x.id!==id));setScreen("home");setST(null);};
+    const code = getSyncCode();
+    if (code) attachListener(code, local);
+    else setLoaded(true);
+  }, []);
+
+  /* --- \ub370\uc774\ud130 \ubcc0\uacbd \uc2dc \uc800\uc7a5 --- */
+  useEffect(() => {
+    if (!loaded) return;
+    localSave(trips);
+    const code = getSyncCode();
+    if (code) {
+      savingRef.current = true;
+      cloudSave(code, trips).finally(() => { savingRef.current = false; });
+    }
+  }, [trips, loaded]);
+
+  function attachListener(code, currentTrips) {
+    if (unsubRef.current) unsubRef.current();
+    setSyncSt("syncing");
+    const ref = doc(db, "wanderlog", code);
+    const unsub = onSnapshot(ref, snap => {
+      if (savingRef.current) return; // \ub0b4\uac00 \uc800\uc7a5 \uc911\uc774\uba74 \ubb34\uc2dc
+      if (snap.exists()) {
+        const cloudTrips = safeArr(snap.data().trips);
+        const merged = mergePhotos(cloudTrips, localLoad());
+        setTrips(merged);
+        localSave(merged);
+      }
+      setSyncSt("ok");
+      setLoaded(true);
+    }, () => { setSyncSt("error"); setLoaded(true); });
+    unsubRef.current = unsub;
+  }
+
+  const applySync = (newCode) => {
+    const code = newCode.trim().toLowerCase();
+    setSyncCode_(code);
+    setSyncCode(code);
+    if (code) {
+      cloudSave(code, trips).then(() => attachListener(code, trips));
+    } else {
+      if (unsubRef.current) unsubRef.current();
+      setSyncSt("idle");
+    }
+  };
+
+  const updateTrip = t => { setTrips(p=>p.map(x=>x.id===t.id?t:x)); setST(t); };
+  const deleteTrip = id => { setTrips(p=>p.filter(x=>x.id!==id)); setScreen("home"); setST(null); };
 
   const stats = {
     places: trips.reduce((a,t)=>a+new Set(safeArr(t.days).flatMap(d=>getPlaceNames(d))).size,0),
     days:   trips.reduce((a,t)=>a+safeArr(t.days).length,0),
   };
 
-  if (!loaded) return <div style={{background:"#F8F6F2",minHeight:"100vh"}}/>;
+  if (!loaded) return (
+    <div style={{background:"#F8F6F2",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}>
+      <div style={{width:20,height:20,border:"2px solid #E8E0D4",borderTopColor:"#8A6B3E",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>
+      <span style={{fontSize:13,color:"#A0AEC0"}}>{"\uB370\uC774\uD130 \uBD88\uB7EC\uC624\uB294 \uC911..."}</span>
+    </div>
+  );
 
   return (
     <div className="app-wrapper">
@@ -446,7 +552,8 @@ export default function WanderLog() {
       `}</style>
 
       <div className={`left-panel ${screen==="home"?"active-mobile":"hidden-mobile"}`}>
-        <HomeScreen trips={trips} stats={stats} onSelect={t=>{setST(t);setScreen("trip");}} onNew={()=>setModal(true)}/>
+        <HomeScreen trips={trips} stats={stats} onSelect={t=>{setST(t);setScreen("trip");}} onNew={()=>setModal(true)}
+          syncCode={syncCode} syncStatus={syncStatus} onSyncApply={applySync}/>
       </div>
       <div className={`right-panel ${screen!=="home"?"active-mobile":"hidden-mobile"}`}>
         {screen==="trip" && selTrip && <TripScreen trip={selTrip} onBack={()=>setScreen("home")} onSelectDay={d=>{setSD(d);setScreen("day");}} onUpdate={updateTrip} onDelete={deleteTrip}/>}
@@ -464,7 +571,17 @@ export default function WanderLog() {
 }
 
 /* HOME ------------------------------------------------------------------ */
-function HomeScreen({ trips, stats, onSelect, onNew }) {
+function HomeScreen({ trips, stats, onSelect, onNew, syncCode, syncStatus, onSyncApply }) {
+  const [editSync, setEditSync] = useState(false);
+  const [inputCode, setInputCode] = useState(syncCode||"");
+
+  const statusDot = {
+    idle:    {bg:"#CBD5E0", label:"\uBE44\uD65C\uC131\uD654"},
+    syncing: {bg:"#F6AD55", label:"\uC5F0\uB3D9\uC911..."},
+    ok:      {bg:"#68D391", label:"\uC5F0\uB3D9\uB428"},
+    error:   {bg:"#FC8181", label:"\uC5F0\uB3D9 \uC624\uB958"},
+  }[syncStatus] || {bg:"#CBD5E0", label:""};
+
   return (
     <div style={{height:"100%",overflowY:"auto"}}>
       {/* Hero header */}
@@ -472,15 +589,55 @@ function HomeScreen({ trips, stats, onSelect, onNew }) {
         <div style={{position:"absolute",top:-30,right:-30,width:160,height:160,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
         <div style={{position:"absolute",bottom:-20,left:-20,width:100,height:100,borderRadius:"50%",background:"rgba(255,255,255,.03)"}}/>
         <div style={{position:"relative"}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:34,fontWeight:700,color:"#FFF",letterSpacing:.5,lineHeight:1.1}}>Wanderlog</div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,.6)",marginTop:5,letterSpacing:.5}}>{"\uB098\uB9CC\uC758"} {"\uD504\uB9AC\uBBF8\uC5C4"} {"\uC5EC\uD589"} {"\uAE30\uB85D"}</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:34,fontWeight:700,color:"#FFF",letterSpacing:.5,lineHeight:1.1}}>Wanderlog</div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,.6)",marginTop:5,letterSpacing:.5}}>{"\uB098\uB9CC\uC758"} {"\uD504\uB9AC\uBBF8\uC5C4"} {"\uC5EC\uD589"} {"\uAE30\uB85D"}</div>
+            </div>
+            {/* \ub3d9\uae30\ud654 \uc0c1\ud0dc \ubc84\ud2bc */}
+            <button onClick={()=>setEditSync(p=>!p)}
+              style={{background:"rgba(255,255,255,.15)",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,.25)",color:"#FFF",borderRadius:20,padding:"5px 11px",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:5,marginTop:4}}>
+              <div style={{width:7,height:7,borderRadius:"50%",background:statusDot.bg,flexShrink:0}}/>
+              {syncCode ? syncCode : {"\uB3D9\uAE30\uD654"}}
+            </button>
+          </div>
           <button style={{marginTop:20,background:"rgba(255,255,255,.15)",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,.3)",color:"#FFF",borderRadius:12,padding:"10px 20px",fontWeight:600,fontSize:14,cursor:"pointer"}} className="tbtn" onClick={onNew}>
             + {"\uC0C8"} {"\uC5EC\uD589"} {"\uC2DC\uC791"}
           </button>
         </div>
       </div>
 
-      {/* Stats strip */}
+      {/* \ub3d9\uae30\ud654 \ucf54\ub4dc \ud328\ub110 */}
+      {editSync && (
+        <div style={{margin:"14px 16px 0",padding:"16px",background:"#FFF",borderRadius:16,border:"1px solid #E8ECF0",boxShadow:"0 4px 16px rgba(0,0,0,.06)"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#2D3748",marginBottom:4}}>{"\uD074\uB77C\uC6B0\uB4DC"} {"\uB3D9\uAE30\uD654"} {"\uCF54\uB4DC"}</div>
+          <div style={{fontSize:12,color:"#A0AEC0",marginBottom:12,lineHeight:1.6}}>
+            {"\uBAA8\uB4E0"} {"\uAE30\uAE30\uC5D0\uC11C"} {"\uAC19\uC740"} {"\ucf54\ub4dc\ub97c"} {"\uc785\ub825\ud558\uba74"} {"\ub370\uc774\ud130\uac00"} {"\uC2E4\uc2dc\uac04"} {"\uB3D9\uAE30\uD654\ub429\ub2c8\ub2e4"}.
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <input
+              value={inputCode}
+              onChange={e=>setInputCode(e.target.value.toLowerCase().replace(/[^a-z0-9]/g,""))}
+              placeholder="gravo01"
+              maxLength={20}
+              style={{flex:1,fontSize:14,padding:"10px 12px"}}
+            />
+            <button onClick={()=>{onSyncApply(inputCode);setEditSync(false);}}
+              style={{background:"linear-gradient(135deg,#A88653,#8A6B3E)",color:"#FFF",border:"none",borderRadius:12,padding:"10px 18px",fontWeight:700,fontSize:14,cursor:"pointer",flexShrink:0}}>
+              {"\uC801\uC6A9"}
+            </button>
+          </div>
+          {syncCode && (
+            <button onClick={()=>{onSyncApply("");setInputCode("");setEditSync(false);}}
+              style={{marginTop:8,background:"none",border:"none",color:"#FC8181",fontSize:12,cursor:"pointer",padding:"4px 0"}}>
+              {"\uB3D9\uAE30\uD654"} {"\uD574\uC81C"}
+            </button>
+          )}
+          <div style={{marginTop:10,fontSize:11,color:"#B0BEC5",lineHeight:1.6}}>
+            {"\u26A0\uFE0F"} {"\ucf54\ub4dc\ub97c"} {"\uc544\ub294"} {"\ub204\uad6c\ub098"} {"\ub370\uc774\ud130\ub97c"} {"\ubcfc"} {"\uc218"} {"\uc788\uc2b5\ub2c8\ub2e4"}. {"\uc8fc\uc9c0"} {"\ub9d0"} {"\ucf54\ub4dc\ub97c"} {"\uc120\ud0dd\ud558\uc138\uc694"}.
+          </div>
+        </div>
+      )}
       {stats.days > 0 && (
         <div style={{display:"flex",gap:0,borderBottom:"1px solid #F0EDE8",background:"#FFF"}}>
           {[{v:trips.length,l:"\uC5EC\uD589",i:"\u2708"},{v:stats.days,l:"\uAE30\uB85D\uC77C",i:"\uD83D\uDCC5"},{v:stats.places,l:"\uBC29\uBB38\uC9C0",i:"\uD83D\uDCCD"}].map((x,idx)=>(

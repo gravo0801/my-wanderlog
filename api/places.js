@@ -89,4 +89,3 @@ JSON format (array only, no markdown, no explanation):
     return res.status(500).json({ error: e.message });
   }
 }
-

@@ -104,6 +104,18 @@ const TRANSPORT_MODES = [
   {id:"flight",   label:"\uD56D\uACF5",     icon:"\u2708",       maps:null},
   {id:"boat",     label:"\uC120\uBC15",     icon:"\u26F4",       maps:"transit"},
 ];
+
+/* -- Time options (30 min intervals) --------------------------------------- */
+const TIME_OPTIONS = [
+  {value:"",label:"\uC2DC\uAC04 \uBBF8\uC9C0\uC815"},
+];
+for (let h=0; h<24; h++) {
+  ["00","30"].forEach(m => {
+    const v = String(h).padStart(2,"0") + ":" + m;
+    TIME_OPTIONS.push({value:v, label:v});
+  });
+}
+
 const DURATION_OPTIONS = [
   {value:"",      label:"\uC18C\uC694\uC2DC\uAC04"},
   {value:"0.5h",  label:"0.5h"},
@@ -316,13 +328,14 @@ function WaypointsEditor({ waypoints, onChange }) {
               </div>
               {/* Row 2: time + voucher */}
               <div style={{display:"flex",alignItems:"center",gap:8,paddingLeft:39}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,background:"#FFF",border:"1px solid #E2E8F0",borderRadius:10,padding:"0 10px",height:38}}>
-                  <span style={{fontSize:12,color:"#A0AEC0",userSelect:"none"}}>{"\uD83D\uDD50"}</span>
-                  <input type="time" value={safeStr(wp.time)} onChange={e=>updateWp(wp.id,{time:e.target.value})}
-                    className="time-input"
-                    title="\uB3C4\uCC29 \uC2DC\uAC04"/>
+                <div style={{display:"flex",alignItems:"center",gap:6,background:"#FFF",border:"1px solid #E2E8F0",borderRadius:10,padding:"0 4px 0 10px",height:38}}>
+                  <span style={{fontSize:12,color:"#A0AEC0",userSelect:"none",flexShrink:0}}>{"\uD83D\uDD50"}</span>
+                  <select value={safeStr(wp.time)} onChange={e=>updateWp(wp.id,{time:e.target.value})}
+                    style={{background:"transparent!important",border:"none!important",fontSize:13,padding:"0 4px",width:"auto",height:36,color:wp.time?"#2D3748":"#A0AEC0",minWidth:90}}>
+                    {TIME_OPTIONS.map(t=><option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
                 </div>
-                <button onClick={()=>toggleV(wp.id)} title="\uBC14\uC6B0\uCC98/\uB9C1\uD06C \uCCA8\uBD80"
+                <button onClick={()=>toggleV(wp.id)} title={"\uBC14\uC6B0\uCC98/\uB9C1\uD06C \uCCA8\uBD80"}
                   style={{height:38,padding:"0 12px",borderRadius:10,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontSize:12,fontWeight:600,border:`1px solid ${hasV?"#FBD38D":"#E2E8F0"}`,background:hasV?"#FFFBF0":openV[wp.id]?"#F7FAFC":"#FFF",color:hasV?"#8A6B3E":"#718096",transition:"all .15s"}}>
                   {"\uD83D\uDCCE"} {hasV?"\uBC14\uC6B0\uCC98 \uC788\uC74C":"\uBC14\uC6B0\uCC98"}
                 </button>
@@ -346,7 +359,7 @@ function WaypointsEditor({ waypoints, onChange }) {
                   <div style={{position:"relative"}}>
                     <input type="url" value={safeStr(wp.voucher?.url)}
                       onChange={e=>updateWp(wp.id,{voucher:{...(wp.voucher||{}),url:e.target.value}})}
-                      placeholder="\uC608\uC57D \uD655\uC778 \uB9C1\uD06C (https://...)"
+                      placeholder={"\uC608\uC57D \uD655\uC778 \uB9C1\uD06C (https://...)"}
                       style={{paddingRight:wp.voucher?.url?"68px":"16px"}}/>
                     {wp.voucher?.url && (
                       <a href={wp.voucher.url} target="_blank" rel="noopener noreferrer"
@@ -368,24 +381,12 @@ function WaypointsEditor({ waypoints, onChange }) {
                   <div style={{width:2,flex:1,background:"linear-gradient(to bottom,#C8A97E,#E2E8F0)",minHeight:10}}/>
                 </div>
                 <div style={{flex:1,padding:"8px 0 8px 10px"}}>
-                  <div style={{fontSize:10,color:"#B0BEC5",fontWeight:600,letterSpacing:.5,marginBottom:7,textTransform:"uppercase"}}>{"\uC774\uB3D9\uC218\uB2E8"} {"\u00B7"} {"\uC18C\uC694\uC2DC\uAC04"}</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
-                    {TRANSPORT_MODES.map(m => {
-                      const on = (wp.transport||"transit") === m.id;
-                      return (
-                        <button key={m.id} onClick={()=>updateWp(wp.id,{transport:m.id})}
-                          style={{display:"flex",alignItems:"center",gap:3,padding:"4px 9px",borderRadius:20,cursor:"pointer",fontSize:11,fontWeight:on?700:400,transition:"all .1s",
-                            border:`1.5px solid ${on?"#8A6B3E":"#E2E8F0"}`,background:on?"#FFF5EB":"#FFF",color:on?"#8A6B3E":"#718096",
-                            boxShadow:on?"0 2px 8px rgba(138,107,62,.2)":"none"}}>
-                          <span style={{fontSize:13}}>{m.icon}</span>{m.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <select value={safeStr(wp.duration)} onChange={e=>updateWp(wp.id,{duration:e.target.value})}
-                    style={{fontSize:13,padding:"7px 10px",borderRadius:10,width:"auto",minWidth:130,height:38,color:wp.duration?"#2D3748":"#A0AEC0"}}>
-                    {DURATION_OPTIONS.map(d=><option key={d.value} value={d.value}>{d.label}</option>)}
-                  </select>
+                  <CompactTransport
+                    value={wp.transport||"transit"}
+                    duration={wp.duration||""}
+                    onTransport={v=>updateWp(wp.id,{transport:v})}
+                    onDuration={v=>updateWp(wp.id,{duration:v})}
+                  />
                 </div>
               </div>
             )}
@@ -406,6 +407,93 @@ function WaypointsEditor({ waypoints, onChange }) {
     </div>
   );
 }
+/* -- CompactTransport: \uC120\uD0DD\uB41C \uC774\uB3D9\uC218\uB2E8\uB9CC \uD45C\uC2DC, \uD074\uB9AD\uD558\uBA74 \uBCC0\uACBD -------------- */
+function CompactTransport({ value, duration, onTransport, onDuration }) {
+  const [open, setOpen] = useState(false);
+  const cur = TRANSPORT_MODES.find(m=>m.id===value) || TRANSPORT_MODES[0];
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+      {/* \uD604\uC7AC \uC120\uD0DD \uBC84\uD2BC */}
+      <button onClick={()=>setOpen(p=>!p)}
+        style={{display:"flex",alignItems:"center",gap:5,padding:"5px 12px",borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:600,
+          border:"1.5px solid #8A6B3E",background:"#FFF5EB",color:"#8A6B3E",boxShadow:"0 2px 8px rgba(138,107,62,.15)"}}>
+        <span style={{fontSize:14}}>{cur.icon}</span>
+        {cur.label}
+        <span style={{fontSize:10,opacity:.6}}>{open?"\u25B2":"\u25BC"}</span>
+      </button>
+      {/* \uC18C\uC694\uC2DC\uAC04 select */}
+      <select value={duration} onChange={e=>onDuration(e.target.value)}
+        style={{fontSize:12,padding:"5px 8px",borderRadius:20,border:"1.5px solid #E2E8F0",background:"#FFF",color:duration?"#2D3748":"#A0AEC0",height:32,width:"auto",minWidth:110}}>
+        {DURATION_OPTIONS.map(d=><option key={d.value} value={d.value}>{d.label}</option>)}
+      </select>
+      {/* \uD3BC\uCE68 \uC120\uD0DD \uADF8\uB9AC\uB4DC */}
+      {open && (
+        <div style={{width:"100%",display:"flex",flexWrap:"wrap",gap:4,padding:"10px",background:"#FAFAF8",borderRadius:12,border:"1px solid #F0EDE8",marginTop:2}}>
+          {TRANSPORT_MODES.map(m=>{
+            const on = m.id===value;
+            return (
+              <button key={m.id} onClick={()=>{onTransport(m.id);setOpen(false);}}
+                style={{display:"flex",alignItems:"center",gap:3,padding:"4px 9px",borderRadius:16,cursor:"pointer",fontSize:11,fontWeight:on?700:400,
+                  border:`1.5px solid ${on?"#8A6B3E":"#E2E8F0"}`,background:on?"#FFF5EB":"#FFF",color:on?"#8A6B3E":"#718096"}}>
+                <span style={{fontSize:13}}>{m.icon}</span>{m.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -- RouteTimeline: \uC800\uC7A5\uB41C \uB3D9\uC120\uC744 \uC77C\uC9C1\uC120 \uC77C\uB7EC\uC2A4\uD2B8\uB85C \uD45C\uC2DC ------------------- */
+function RouteTimeline({ waypoints }) {
+  const wps = waypoints.filter(w=>w.name);
+  if (wps.length === 0) return null;
+  if (wps.length === 1) return (
+    <div style={{display:"flex",alignItems:"center",gap:6,padding:"10px 0 2px",overflowX:"auto"}}>
+      <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+        <div style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#A88653,#8A6B3E)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,boxShadow:"0 2px 8px rgba(138,107,62,.3)"}}>{wps[0].icon||"\uD83D\uDCCD"}</div>
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:"#1A202C",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{wps[0].name}</div>
+          {wps[0].time && <div style={{fontSize:10,color:"#C8A97E",fontWeight:600}}>{wps[0].time}</div>}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:0,padding:"10px 0 2px",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+      {wps.map((wp, i) => {
+        const nextWp = wps[i+1];
+        const transport = TRANSPORT_MODES.find(m=>m.id===(wp.transport||"transit"));
+        return (
+          <div key={wp.id||i} style={{display:"flex",alignItems:"center",gap:0,flexShrink:0}}>
+            {/* \uC7A5\uC18C */}
+            <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,minWidth:60,maxWidth:80}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:i===0?"linear-gradient(135deg,#A88653,#8A6B3E)":i===wps.length-1?"linear-gradient(135deg,#667eea,#764ba2)":"#FFF",border:i===0||i===wps.length-1?"none":"2px solid #C8A97E",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 3px 10px rgba(0,0,0,.12)",flexShrink:0}}>
+                {wp.icon||"\uD83D\uDCCD"}
+              </div>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#1A202C",maxWidth:76,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1.2}}>{wp.name}</div>
+                {wp.time && <div style={{fontSize:10,color:"#C8A97E",fontWeight:600,marginTop:1}}>{wp.time}</div>}
+              </div>
+            </div>
+            {/* \uC5F0\uACB0\uC120 + \uC774\uB3D9\uC218\uB2E8 */}
+            {i < wps.length-1 && (
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"0 4px",flexShrink:0,minWidth:64}}>
+                <div style={{fontSize:16,marginBottom:2}}>{transport?.icon||"\uD83D\uDE8C"}</div>
+                {wp.duration && <div style={{fontSize:9.5,color:"#8A6B3E",fontWeight:600,background:"#FFF5EB",padding:"1px 6px",borderRadius:8,border:"1px solid #F6D48A",whiteSpace:"nowrap"}}>{wp.duration}</div>}
+                <div style={{width:"100%",height:2,background:"linear-gradient(to right,#C8A97E,#E2D5C0)",borderRadius:1,marginTop:3}}/>
+                <div style={{width:0,height:0,borderTop:"4px solid transparent",borderBottom:"4px solid transparent",borderLeft:"7px solid #C8A97E",marginTop:-3}}/>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 const W = {
   btn:    {background:"#F7FAFC",border:"1px solid #E2E8F0",color:"#4A5568",padding:"8px 14px",borderRadius:10,fontWeight:600,fontSize:13,cursor:"pointer"},
   mapBtn: {background:"#FFFBF0",border:"1px solid #F6C84B",color:"#8A6B3E",padding:"8px 14px",borderRadius:10,fontWeight:600,fontSize:13,cursor:"pointer"},
@@ -777,6 +865,9 @@ function DayRow({ day, index, total, onClick }) {
             <div>
               <div style={{fontSize:15,fontWeight:700,color:"#1A202C"}}>{fmtDate(day.date)}</div>
               {wps.length>0 && (
+                <RouteTimeline waypoints={wps}/>
+              )}
+              {wps.length>0 && (
                 <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:6}}>
                   {wps.slice(0,3).map((w,i)=>(
                     <span key={i} style={{fontSize:11.5,color:"#5A6572",background:"#F7F5F2",padding:"3px 9px",borderRadius:8,border:"1px solid #EDE9E3",display:"inline-flex",alignItems:"center",gap:3}}>
@@ -893,10 +984,10 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
               <select value={newExp.currency} onChange={e=>setNewExp({...newExp,currency:e.target.value})} style={{width:88,padding:"12px 6px"}}>
                 {CURRENCIES.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
-              <input type="number" placeholder="\uAE08\uC561" value={newExp.amount} onChange={e=>setNewExp({...newExp,amount:e.target.value})} style={{flex:1}}/>
+              <input type="number" placeholder={"\uAE08\uC561"} value={newExp.amount} onChange={e=>setNewExp({...newExp,amount:e.target.value})} style={{flex:1}}/>
             </div>
             <div style={{display:"flex",gap:8}}>
-              <input type="text" placeholder="\uBA54\uBAA8 (\uC608: \uB77C\uBA58\uC9D1, \uC9C0\uD558\uCCA0)" value={newExp.memo} onChange={e=>setNewExp({...newExp,memo:e.target.value})} onKeyDown={e=>e.key==="Enter"&&addExp()} style={{flex:1}}/>
+              <input type="text" placeholder={"\uBA54\uBAA8 (\uC608: \uB77C\uBA58\uC9D1, \uC9C0\uD558\uCCA0)"} value={newExp.memo} onChange={e=>setNewExp({...newExp,memo:e.target.value})} onKeyDown={e=>e.key==="Enter"&&addExp()} style={{flex:1}}/>
               <button onClick={addExp} style={{...S.btnPrimary,padding:"0 20px",height:50,flexShrink:0}}>{"\uCD94\uAC00"}</button>
             </div>
           </div>
@@ -926,7 +1017,7 @@ function DayScreen({ day, trip, onBack, onUpdate }) {
         {/* Diary */}
         <div style={S.secBox}>
           <div style={S.secTitle}>{"\u270D"} {"\uC5EC\uD589"} {"\uB178\uD2B8"}</div>
-          <textarea value={diary} onChange={e=>setDiary(e.target.value)} placeholder="\uC624\uB298 \uC5B4\uB5A4 \uBA4B\uC9C4 \uC21C\uAC04\uB4E4\uC774 \uC788\uC5C8\uB098\uC694?" style={{minHeight:140,lineHeight:1.7,fontSize:14,resize:"vertical"}}/>
+          <textarea value={diary} onChange={e=>setDiary(e.target.value)} placeholder={"\uC624\uB298 \uC5B4\uB5A4 \uBA4B\uC9C4 \uC21C\uAC04\uB4E4\uC774 \uC788\uC5C8\uB098\uC694?"} style={{minHeight:140,lineHeight:1.7,fontSize:14,resize:"vertical"}}/>
           {diary.length>0 && <div style={{textAlign:"right",fontSize:11,color:"#C0C8D0",marginTop:4}}>{diary.length}{"\uC790"}</div>}
         </div>
 
@@ -993,7 +1084,7 @@ function NewTripModal({ onClose, onCreate }) {
         <div style={{padding:"8px 22px 0",overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:14}}>
           <div>
             <label style={S.label}>{"\uC5EC\uD589"} {"\uC81C\uBAA9"} *</label>
-            <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="\uB3C4\uCFC4 \uBC9A\uAF43 \uC5EC\uD589 2025"/>
+            <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder={"\uB3C4\uCFC4 \uBC9A\uAF43 \uC5EC\uD589 2025"}/>
           </div>
           <div style={{display:"flex",gap:12}}>
             <div style={{flex:1}}>
@@ -1001,11 +1092,11 @@ function NewTripModal({ onClose, onCreate }) {
                 {"\uAD6D\uAC00"}
                 {guessFlag(form.country) && <span style={{color:"#48BB78",fontSize:10,marginLeft:5}}>{"\uC790\uB3D9"} {guessFlag(form.country)}</span>}
               </label>
-              <input value={form.country} onChange={e=>handleCountry(e.target.value)} placeholder="\uC77C\uBCF8, Japan, Thailand..."/>
+              <input value={form.country} onChange={e=>handleCountry(e.target.value)} placeholder={"\uC77C\uBCF8, Japan, Thailand..."}/>
             </div>
             <div style={{width:76}}>
               <label style={S.label}>{"\uAD6D\uAE30"}</label>
-              <input value={form.flag} onChange={e=>setForm({...form,flag:e.target.value})} style={{textAlign:"center",fontSize:22,padding:"8px 4px"}} placeholder="\uD83C\uDDEF\uD83C\uDDF5"/>
+              <input value={form.flag} onChange={e=>setForm({...form,flag:e.target.value})} style={{textAlign:"center",fontSize:22,padding:"8px 4px"}} placeholder={"\uD83C\uDDEF\uD83C\uDDF5"}/>
             </div>
           </div>
           <div style={{display:"flex",gap:12}}>
